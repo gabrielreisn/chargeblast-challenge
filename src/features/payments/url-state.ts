@@ -4,6 +4,10 @@ import { methods, statuses, type PaymentMethod, type PaymentStatus } from "./mod
 // the browser's back/forward buttons work.
 
 type SortField = "created" | "amount" | "status";
+
+const datePresets = ["today", "7", "30", "custom"] as const;
+/** "today", "7" or "30" (days, counting today), or "custom" (uses `from`/`to`). */
+export type DatePreset = (typeof datePresets)[number];
 type PageSize = 25 | 50 | 100;
 
 export type PaymentQuery = {
@@ -11,8 +15,8 @@ export type PaymentQuery = {
   statuses: PaymentStatus[];
   methods: PaymentMethod[];
   currency: string;
-  /** Date preset: "" (all time), "today", "7", "30" or "custom" (uses `from`/`to`). */
-  date: string;
+  /** "" means all time. */
+  date: DatePreset | "";
   from: string;
   to: string;
   /** Amount bounds in major units, as typed by the user. */
@@ -40,7 +44,6 @@ export const defaultQuery: PaymentQuery = {
   size: 25,
 };
 
-const datePresets = ["today", "7", "30", "custom"];
 const pageSizes: PageSize[] = [25, 50, 100];
 const MAX_PAGE = 100_000;
 const MAX_SEARCH_LENGTH = 200;
@@ -52,9 +55,9 @@ function isCalendarDate(value: string) {
   return Number.isFinite(date.valueOf()) && date.toISOString().slice(0, 10) === value;
 }
 
-/** A non-negative amount with up to three decimals, or "" when invalid. */
+/** A non-negative amount with up to nine digits and three decimals, or "" when invalid. */
 function parseAmountBound(value: string | null) {
-  if (!value || !/^\d+(\.\d{1,3})?$/.test(value)) return "";
+  if (!value || !/^\d{1,9}(\.\d{1,3})?$/.test(value)) return "";
   return Number.isFinite(Number(value)) ? value : "";
 }
 
@@ -92,7 +95,7 @@ export function parseQuery(params: URLSearchParams): PaymentQuery {
     statuses: parseList(params.get("status"), statuses),
     methods: parseList(params.get("method"), methods),
     currency: /^[a-z]{3}$/.test(currency) ? currency : "",
-    date: datePresets.includes(date) ? date : "",
+    date: datePresets.find((preset) => preset === date) ?? "",
     from: isCalendarDate(from) ? from : "",
     to: isCalendarDate(to) ? to : "",
     min: amountRangeReversed ? "" : min,

@@ -1,16 +1,17 @@
-import { dateKey, majorAmount } from "./format";
+import { majorAmount, type Formatters } from "./format";
 import type { Payment } from "./model";
 import type { PaymentQuery } from "./url-state";
 
 const SECONDS_PER_DAY = 86_400;
 
 type DateRange = { start: string; end: string };
+type DateKey = Formatters["dateKey"];
 
 /**
  * Inclusive calendar-day range for the date filter. Presets count today, so
  * "7" covers today plus the six previous days.
  */
-function dateRangeFor(query: PaymentQuery, now: number): DateRange {
+function dateRangeFor(query: PaymentQuery, now: number, dateKey: DateKey): DateRange {
   if (query.date === "custom") return { start: query.from, end: query.to };
   const extraDays = query.date === "7" ? 6 : query.date === "30" ? 29 : 0;
   return { start: dateKey(now - extraDays * SECONDS_PER_DAY), end: dateKey(now) };
@@ -24,7 +25,12 @@ function matchesSearch(payment: Payment, term: string) {
   );
 }
 
-function matchesDate(payment: Payment, query: PaymentQuery, { start, end }: DateRange) {
+function matchesDate(
+  payment: Payment,
+  query: PaymentQuery,
+  { start, end }: DateRange,
+  dateKey: DateKey,
+) {
   if (!query.date) return true;
   const day = dateKey(payment.created);
   return (!start || day >= start) && (!end || day <= end);
@@ -46,11 +52,16 @@ function compareBy(field: PaymentQuery["sort"], a: Payment, b: Payment) {
 /**
  * Applies search and every active filter, then a stable sort. Filter groups
  * combine with AND; values inside a multi-select combine with OR. Ties break
- * by ID so the order never shuffles between renders.
+ * by ID so the order never shuffles between renders. Calendar days follow the viewer's time zone.
  */
-export function queryPayments(payments: Payment[], query: PaymentQuery, now: number) {
+export function queryPayments(
+  payments: Payment[],
+  query: PaymentQuery,
+  now: number,
+  { dateKey }: Pick<Formatters, "dateKey">,
+) {
   const term = query.search.trim().toLowerCase();
-  const dateRange = dateRangeFor(query, now);
+  const dateRange = dateRangeFor(query, now, dateKey);
   return payments
     .filter(
       (payment) =>
@@ -58,7 +69,7 @@ export function queryPayments(payments: Payment[], query: PaymentQuery, now: num
         (!query.statuses.length || query.statuses.includes(payment.status)) &&
         (!query.methods.length || query.methods.includes(payment.method)) &&
         (!query.currency || query.currency === payment.currency) &&
-        matchesDate(payment, query, dateRange) &&
+        matchesDate(payment, query, dateRange, dateKey) &&
         matchesAmount(payment, query),
     )
     .toSorted((a, b) => {

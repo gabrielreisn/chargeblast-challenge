@@ -1,18 +1,21 @@
 "use client";
-import { ArrowDownToLine } from "lucide-react";
+import { Share } from "lucide-react";
 import { toast } from "sonner";
 import { buttonStyles, textButtonStyles } from "@/components/ui/styles";
 import { ColumnMenu } from "./column-menu";
 import { csvForPayments } from "./csv";
-import { getFilterChips } from "./filter-chips";
+import { hasActiveFilters } from "./filter-chips";
+import { useFormatters } from "./format-context";
 import { PaymentFilters, type UpdateQuery } from "./filters";
 import type { Payment } from "./model";
 import type { MoveColumn, PaymentTable } from "./table-features";
 import { defaultQuery, type PaymentQuery } from "./url-state";
 
-function downloadCsv(payments: Payment[]) {
+function downloadCsv(payments: Payment[], columnIds: string[]) {
   // The byte-order mark makes Excel read the file as UTF-8.
-  const blob = new Blob(["﻿", csvForPayments(payments)], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["﻿", csvForPayments(payments, columnIds)], {
+    type: "text/csv;charset=utf-8;",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -31,7 +34,11 @@ type TableToolbarProps = {
   moveColumn: MoveColumn;
 };
 
-/** Filter buttons on the left; CSV export and column settings on the right. */
+/**
+ * Filter buttons on the left; CSV export and column settings on the right. The export has the
+ * table's visible columns in their current order, and the selected rows when there are any,
+ * otherwise every payment matching the filters.
+ */
 export function TableToolbar({
   query,
   update,
@@ -40,12 +47,19 @@ export function TableToolbar({
   table,
   moveColumn,
 }: TableToolbarProps) {
-  const hasFilters = getFilterChips(query).length > 0;
+  "use no memo"; // Reads TanStack's mutable table state during render.
+  const { formatNumber } = useFormatters();
+  const hasFilters = hasActiveFilters(query);
+  const selected = table.getSelectedRowModel().rows.map((row) => row.original);
+  const exported = selected.length ? selected : filteredPayments;
 
   function exportCsv() {
     try {
-      downloadCsv(filteredPayments);
-      toast.success(`Exported ${filteredPayments.length.toLocaleString()} payments`);
+      downloadCsv(
+        exported,
+        table.getVisibleLeafColumns().map((column) => column.id),
+      );
+      toast.success(`Exported ${formatNumber(exported.length)} payments`);
     } catch (error) {
       console.error(error);
       toast.error("Export failed", {
@@ -74,10 +88,10 @@ export function TableToolbar({
           type="button"
           className={buttonStyles({ size: "sm" })}
           onClick={exportCsv}
-          disabled={!filteredPayments.length}
+          disabled={!exported.length}
         >
-          <ArrowDownToLine size={12} aria-hidden="true" />
-          Export
+          <Share size={12} aria-hidden="true" />
+          {selected.length ? "Export selected" : "Export"}
         </button>
         <ColumnMenu table={table} moveColumn={moveColumn} />
       </div>

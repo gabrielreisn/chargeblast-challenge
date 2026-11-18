@@ -1,26 +1,9 @@
 "use client";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import * as Popover from "@radix-ui/react-popover";
-import {
-  ArrowDownUp,
-  Bell,
-  BookOpen,
-  ChartNoAxesCombined,
-  ChevronDown,
-  CircleHelp,
-  CircleUserRound,
-  ExternalLink,
-  FileChartColumn,
-  House,
-  Layers,
-  Link2,
-  Settings,
-  Shield,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react";
+import { Bell, BookOpen, CircleHelp, Settings } from "lucide-react";
 import { Hint } from "@/components/ui/hint";
 import {
   cn,
@@ -28,140 +11,9 @@ import {
   floatingPanelStyles,
   menuItemStyles,
   menuLabelStyles,
-  menuSeparatorStyles,
   menuStyles,
-  navItemHover,
-  navItemLayout,
-  navItemText,
 } from "@/components/ui/styles";
-import { ProductsNav } from "./products-nav";
-import { UnavailableNavLink } from "./unavailable-nav-link";
-
-type NavEntry = { icon: LucideIcon; label: string };
-
-const primaryNav: NavEntry[] = [
-  { icon: House, label: "Home" },
-  { icon: Wallet, label: "Balances" },
-];
-const secondaryNav: NavEntry[] = [
-  { icon: CircleUserRound, label: "Customers" },
-  { icon: Layers, label: "Product catalog" },
-];
-const shortcuts: NavEntry[] = [
-  { icon: ChartNoAxesCombined, label: "Payments analytics" },
-  { icon: FileChartColumn, label: "Reports" },
-  { icon: Link2, label: "Sigma" },
-  { icon: Shield, label: "Radar" },
-];
-const navSectionStyles = "mx-2.25 mt-6.25 mb-1.5 text-10 text-[#8490a0]";
-
-function UnavailableNavItem({ icon: Icon, label }: NavEntry) {
-  return (
-    <UnavailableNavLink
-      className={cn(
-        navItemLayout,
-        navItemText,
-        navItemHover,
-        "w-full cursor-default px-2.25 text-left",
-      )}
-    >
-      <Icon size={14} strokeWidth={1.7} aria-hidden="true" />
-      {label}
-    </UnavailableNavLink>
-  );
-}
-
-function AccountLogo() {
-  return (
-    <span
-      className="inline-flex size-5.75 items-center justify-center rounded bg-[#d7c4fb] font-serif text-20 font-bold text-[#352353]"
-      aria-hidden="true"
-    >
-      c
-    </span>
-  );
-}
-
-function AccountMenu() {
-  return (
-    <Dropdown.Root>
-      <Dropdown.Trigger className="mb-5.75 flex h-9 w-full items-center gap-2 rounded-[5px] px-1.75 text-left text-13">
-        <AccountLogo />
-        <strong>cramly.ai</strong>
-        <ChevronDown size={13} className="ml-auto text-[#7b8794]" aria-hidden="true" />
-      </Dropdown.Trigger>
-      <Dropdown.Portal>
-        <Dropdown.Content className={menuStyles} align="start" sideOffset={6}>
-          <Dropdown.Label className={menuLabelStyles}>Your account</Dropdown.Label>
-          <div className="flex items-center gap-2.5 p-2.25">
-            <AccountLogo />
-            <span>
-              <strong className="text-12">cramly.ai</strong>
-              <small className="mt-0.75 block text-10 text-[#8a95a6]">Demo workspace</small>
-            </span>
-          </div>
-          <Dropdown.Separator className={menuSeparatorStyles} />
-          <Dropdown.Item className={menuItemStyles}>
-            Sandbox
-            <span className="rounded bg-[#e9f6eb] px-1.25 py-px text-9 text-[#387e4d]">Active</span>
-          </Dropdown.Item>
-          <Dropdown.Item asChild className={menuItemStyles}>
-            <a href="https://dashboard.stripe.com/sandboxes" target="_blank" rel="noreferrer">
-              Open Stripe Dashboard <ExternalLink size={13} aria-hidden="true" />
-            </a>
-          </Dropdown.Item>
-        </Dropdown.Content>
-      </Dropdown.Portal>
-    </Dropdown.Root>
-  );
-}
-
-function Sidebar() {
-  return (
-    <aside className="fixed inset-y-0 left-0 hidden w-(--sidebar) flex-col border-r border-line bg-sidebar px-3 pt-4.5 md:flex">
-      <AccountMenu />
-      <nav aria-label="Main navigation" className="-mx-3 min-h-0 flex-1 overflow-y-auto px-3 pb-3">
-        {primaryNav.map((entry) => (
-          <UnavailableNavItem key={entry.label} {...entry} />
-        ))}
-        <Link
-          className={cn(
-            navItemLayout,
-            "bg-brand-soft px-2.25 text-11 font-semibold text-brand 2xl:text-12",
-          )}
-          href="/payments"
-          aria-current="page"
-        >
-          <ArrowDownUp size={14} strokeWidth={1.7} aria-hidden="true" />
-          Transactions
-        </Link>
-        {secondaryNav.map((entry) => (
-          <UnavailableNavItem key={entry.label} {...entry} />
-        ))}
-        <div className={navSectionStyles}>Shortcuts</div>
-        {shortcuts.map((entry) => (
-          <UnavailableNavItem key={entry.label} {...entry} />
-        ))}
-        <div className={navSectionStyles}>Products</div>
-        <ProductsNav />
-      </nav>
-      <div className="border-t border-line py-2">
-        <a
-          className={cn(
-            navItemLayout,
-            "px-2.25 text-10 font-medium text-[#586577] hover:bg-nav-hover",
-          )}
-          href="https://docs.stripe.com"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <span className="text-11">&lt;/&gt;</span>Developers
-          <ExternalLink size={11} className="ml-auto" aria-hidden="true" />
-        </a>
-      </div>
-    </aside>
-  );
-}
+import { DesktopSidebar, MobileSidebar, SidebarToggle } from "./sidebar";
 
 function NotificationsPopover() {
   return (
@@ -213,12 +65,24 @@ function UserMenu() {
 
 type DashboardShellProps = { children: ReactNode; search: ReactNode };
 
+/**
+ * `--sidebar-width` is the sidebar's size per breakpoint; `--sidebar` is the space the content
+ * reserves for it: 0 below `md` (the drawer overlays), the icon rail's width while collapsed.
+ */
 export function DashboardShell({ children, search }: DashboardShellProps) {
+  // Collapsing is a user preference with no other source of truth; the layout keeps it
+  // across navigations because the shell renders once.
+  const [collapsed, setCollapsed] = useState(false);
   return (
-    <div className="min-h-screen [--sidebar:0px] md:[--sidebar:165px] lg:[--sidebar:190px] 2xl:[--sidebar:210px]">
-      <Sidebar />
-      <div className="ml-(--sidebar) flex min-h-screen flex-col px-3.75 md:px-5 lg:px-7.5 2xl:px-9.5">
+    <div
+      data-sidebar={collapsed ? "collapsed" : "expanded"}
+      className="group/shell min-h-screen [--sidebar:0px] md:[--sidebar-width:165px] md:[--sidebar:var(--sidebar-width)] lg:[--sidebar-width:190px] 2xl:[--sidebar-width:210px] md:data-[sidebar=collapsed]:[--sidebar:52px]"
+    >
+      <DesktopSidebar collapsed={collapsed} />
+      <SidebarToggle collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
+      <div className="ml-(--sidebar) flex min-h-screen flex-col px-3.75 md:px-5 lg:px-7.5 2xl:px-9.5 motion-safe:transition-[margin] motion-safe:duration-200">
         <header className="flex h-15 items-center justify-between gap-3 md:h-16.5 md:gap-6">
+          <MobileSidebar />
           {search}
           <div className="flex items-center gap-2 md:gap-2.5 lg:gap-4">
             <span className="hidden text-10 whitespace-nowrap text-[#657080] lg:inline">

@@ -2,7 +2,7 @@ import { ShieldCheck } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { routeMetadata } from "@/lib/seo";
 
-export const metadata = routeMetadata("standalone3ds");
+export const metadata = routeMetadata("standalone-3ds");
 
 export default function Standalone3dsPage() {
   return (

@@ -3,12 +3,13 @@ import { useMemo } from "react";
 import Link from "next/link";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { ArrowRight, Ellipsis } from "lucide-react";
-import { formatAmount, formatDate, relativeTime, TIME_ZONE } from "./format";
+import type { Formatters } from "./format";
 import { cn, menuItemStyles, menuStyles, rowIconButtonStyles } from "@/components/ui/styles";
 import { Hint } from "@/components/ui/hint";
 import { CopyId, PaymentMethodCell, StatusBadge } from "./ui";
 import type { PaymentColumnDef } from "./table-features";
-export function usePaymentColumns(now: number) {
+/** Minimum widths were measured in the browser: the widest header or essential cell content. */
+export function usePaymentColumns(now: number, format: Formatters) {
   return useMemo<PaymentColumnDef[]>(
     () => [
       {
@@ -44,7 +45,7 @@ export function usePaymentColumns(now: number) {
         accessorKey: "amount",
         header: "Amount",
         size: 125,
-        minSize: 110,
+        minSize: 104,
         cell: ({ row: { original: p } }) => (
           <Link
             className="group/amount flex w-full items-center justify-end gap-1.5"
@@ -52,7 +53,7 @@ export function usePaymentColumns(now: number) {
           >
             {/* End-aligned tabular figures line decimals up row to row. */}
             <span className="font-semibold text-ink tabular-nums group-hover/amount:text-brand">
-              {formatAmount(p.amount, p.currency)}
+              {format.formatAmount(p.amount, p.currency)}
             </span>
             {/* Fixed width so amounts stay aligned across currency codes of different widths. */}
             <span className="w-6.5 text-subtle">{p.currency.toUpperCase()}</span>
@@ -63,28 +64,28 @@ export function usePaymentColumns(now: number) {
         accessorKey: "status",
         header: "Status",
         size: 110,
-        minSize: 100,
+        minSize: 92,
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
       },
       {
         id: "method",
         header: "Payment method",
         size: 155,
-        minSize: 135,
+        minSize: 130,
         cell: ({ row }) => <PaymentMethodCell payment={row.original} />,
       },
       {
         accessorKey: "description",
         header: "Description",
         size: 170,
-        minSize: 120,
+        minSize: 80,
         cell: ({ row }) => <span className="text-muted">{row.original.description ?? "—"}</span>,
       },
       {
         id: "customer",
         header: "Customer",
         size: 245,
-        minSize: 170,
+        minSize: 80,
         cell: ({ row }) => (
           <span title={row.original.customer.email ?? row.original.customer.name ?? ""}>
             {row.original.customer.email ?? row.original.customer.name ?? "Guest customer"}
@@ -95,22 +96,53 @@ export function usePaymentColumns(now: number) {
         accessorKey: "id",
         header: "Payment ID",
         size: 175,
-        minSize: 155,
+        minSize: 128,
         cell: ({ row }) => <CopyId id={row.original.id} />,
       },
       {
         accessorKey: "created",
         header: "Date",
         size: 175,
-        minSize: 160,
+        minSize: 100,
         cell: ({ row }) => (
-          <Hint text={`${relativeTime(row.original.created, now)} · ${TIME_ZONE}`}>
+          <Hint text={`${format.relativeTime(row.original.created, now)} · ${format.timeZone}`}>
             <button type="button" className="text-10 text-[#6d788c]">
               <time dateTime={new Date(row.original.created * 1000).toISOString()}>
-                {formatDate(row.original.created)}
+                {format.formatDate(row.original.created)}
               </time>
             </button>
           </Hint>
+        ),
+      },
+      {
+        id: "refunded",
+        header: "Refunded amount",
+        size: 140,
+        minSize: 105,
+        cell: ({ row: { original: p } }) =>
+          p.amountRefunded ? (
+            <span className="tabular-nums">
+              {format.formatAmount(p.amountRefunded, p.currency)} {p.currency.toUpperCase()}
+            </span>
+          ) : (
+            "—"
+          ),
+      },
+      {
+        id: "customerName",
+        header: "Customer name",
+        size: 170,
+        minSize: 96,
+        cell: ({ row }) => row.original.customer.name ?? "—",
+      },
+      {
+        // The status as Stripe reports it, before it is grouped into the four dashboard statuses.
+        accessorKey: "sourceStatus",
+        header: "Intent status",
+        size: 170,
+        minSize: 80,
+        cell: ({ row }) => (
+          <code className="font-mono text-10 text-muted">{row.original.sourceStatus}</code>
         ),
       },
       {
@@ -141,6 +173,6 @@ export function usePaymentColumns(now: number) {
         ),
       },
     ],
-    [now],
+    [now, format],
   );
 }

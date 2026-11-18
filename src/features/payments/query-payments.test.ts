@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildPayment, secondsAt, testNow } from "@/test/payments";
+import { buildPayment, secondsAt, testFormatters, testNow } from "@/test/payments";
 import { queryPayments } from "./query-payments";
 import { defaultQuery } from "./url-state";
 
@@ -12,13 +12,16 @@ describe("date filtering", () => {
       buildPayment({ id: "after", created: secondsAt("2026-11-18T03:00Z") }),
     ];
     expect(
-      queryPayments(records, { ...defaultQuery, date: "today" }, testNow).map((p) => p.id),
+      queryPayments(records, { ...defaultQuery, date: "today" }, testNow, testFormatters).map(
+        (p) => p.id,
+      ),
     ).toEqual(["end", "start"]);
     expect(
       queryPayments(
         records,
         { ...defaultQuery, date: "custom", from: "2026-11-17", to: "2026-11-17" },
         testNow,
+        testFormatters,
       ),
     ).toHaveLength(2);
   });
@@ -29,7 +32,9 @@ describe("date filtering", () => {
       buildPayment({ id: "outside", created: secondsAt("2026-11-11T02:59:59Z") }),
     ];
     expect(
-      queryPayments(records, { ...defaultQuery, date: "7" }, testNow).map((p) => p.id),
+      queryPayments(records, { ...defaultQuery, date: "7" }, testNow, testFormatters).map(
+        (p) => p.id,
+      ),
     ).toEqual(["inside"]);
   });
 });
@@ -53,6 +58,7 @@ describe("filters, search and sorting", () => {
           max: "10",
         },
         testNow,
+        testFormatters,
       ).map((p) => p.id),
     ).toEqual(["a", "b"]);
   });
@@ -64,10 +70,12 @@ describe("filters, search and sorting", () => {
       last4: "4242",
     });
     for (const search of ["secretending", " ALEX@EXAMPLE.COM ", "4242"])
-      expect(queryPayments([payment], { ...defaultQuery, search }, testNow)).toHaveLength(1);
-    expect(queryPayments([payment], { ...defaultQuery, search: "missing" }, testNow)).toHaveLength(
-      0,
-    );
+      expect(
+        queryPayments([payment], { ...defaultQuery, search }, testNow, testFormatters),
+      ).toHaveLength(1);
+    expect(
+      queryPayments([payment], { ...defaultQuery, search: "missing" }, testNow, testFormatters),
+    ).toHaveLength(0);
   });
 
   test("sorts displayed amounts across currency precision and breaks ties by ID", () => {
@@ -77,9 +85,12 @@ describe("filters, search and sorting", () => {
       buildPayment({ id: "c", amount: 2000 }),
     ];
     expect(
-      queryPayments(records, { ...defaultQuery, sort: "amount", direction: "asc" }, testNow).map(
-        (p) => p.id,
-      ),
+      queryPayments(
+        records,
+        { ...defaultQuery, sort: "amount", direction: "asc" },
+        testNow,
+        testFormatters,
+      ).map((p) => p.id),
     ).toEqual(["a", "z", "c"]);
   });
 });

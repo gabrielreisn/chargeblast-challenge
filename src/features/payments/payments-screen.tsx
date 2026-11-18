@@ -14,6 +14,8 @@ import { ActiveFilters } from "./active-filters";
 import { usePaymentColumns } from "./columns";
 import { DataNote } from "./data-note";
 import type { UpdateQuery } from "./filters";
+import { formattersFor, type FormatSettings } from "./format";
+import { FormattersProvider } from "./format-context";
 import type { Snapshot } from "./model";
 import { PaymentTable } from "./payment-table";
 import { queryPayments } from "./query-payments";
@@ -21,6 +23,7 @@ import { StatusTabs } from "./status-tabs";
 import { TableFooter } from "./table-footer";
 import { paymentTableFeatures, reorderColumns, type MoveColumn } from "./table-features";
 import { TableToolbar } from "./table-toolbar";
+import { TimeZoneSync } from "./time-zone-sync";
 import { paymentsHref, parseQuery } from "./url-state";
 
 const initialColumnOrder: ColumnOrderState = [
@@ -32,12 +35,26 @@ const initialColumnOrder: ColumnOrderState = [
   "customer",
   "id",
   "created",
+  "refunded",
+  "customerName",
+  "sourceStatus",
   "actions",
 ];
+/** Optional columns start hidden; Edit columns adds them. */
+const initialColumnVisibility: ColumnVisibilityState = {
+  refunded: false,
+  customerName: false,
+  sourceStatus: false,
+};
 
-type PaymentsScreenProps = { snapshot: Snapshot; now: number };
+type PaymentsScreenProps = {
+  snapshot: Snapshot;
+  now: number;
+  /** The viewer's locale and time zone, resolved on the server from the request. */
+  formatSettings: FormatSettings;
+};
 
-export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
+export function PaymentsScreen({ snapshot, now, formatSettings }: PaymentsScreenProps) {
   "use no memo"; // TanStack Table exposes mutable APIs; keep this component outside React Compiler memoization.
   const params = useSearchParams();
   const queryKey = params.toString();
@@ -45,9 +62,7 @@ export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
   // Table layout preferences are user input with no other source of truth.
   const [columnOrder, setColumnOrder] = useState(initialColumnOrder);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
-  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({
-    description: true,
-  });
+  const [columnVisibility, setColumnVisibility] = useState(initialColumnVisibility);
   // Selection belongs to one result set: it is keyed by the query, so any query change
   // derives an empty selection without an effect.
   const [selection, setSelection] = useState<{ key: string; rows: RowSelectionState }>({
@@ -60,9 +75,10 @@ export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
     const href = paymentsHref({ ...query, page: 1, ...patch });
     window.history[replace ? "replaceState" : "pushState"](null, "", href);
   };
+  const format = formattersFor(formatSettings);
   const filtered = useMemo(
-    () => queryPayments(snapshot.payments, query, now),
-    [snapshot.payments, query, now],
+    () => queryPayments(snapshot.payments, query, now, format),
+    [snapshot.payments, query, now, format],
   );
   const pages = Math.max(1, Math.ceil(filtered.length / query.size));
   const page = Math.min(query.page, pages);
@@ -74,13 +90,15 @@ export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
     () => [...new Set(snapshot.payments.map((payment) => payment.currency))].toSorted(),
     [snapshot.payments],
   );
-  const columns = usePaymentColumns(now);
+  const columns = usePaymentColumns(now, format);
   // TanStack exposes mutable APIs. React Compiler is not enabled; this component also opts out explicitly.
   const table = useTable({
     features: paymentTableFeatures,
     data: rows,
     columns,
     getRowId: (row) => row.id,
+    // Controlled state wins; initialState is what the Edit columns reset restores.
+    initialState: { columnOrder: initialColumnOrder, columnVisibility: initialColumnVisibility },
     state: { columnOrder, columnSizing, columnVisibility, rowSelection },
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizing,
@@ -101,7 +119,8 @@ export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
     setColumnOrder((order) => reorderColumns(order, id, target));
 
   return (
-    <>
+    <FormattersProvider settings={formatSettings}>
+      <TimeZoneSync renderedTimeZone={formatSettings.timeZone} />
       <Banner
         icon={<Sparkles size={13} aria-hidden="true" />}
         action={{
@@ -136,7 +155,7 @@ export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
         query={query}
         update={update}
       />
-      <DataNote snapshot={snapshot} />
-    </>
+      <DataNote snapshot={snapshot} now={now} />
+    </FormattersProvider>
   );
 }

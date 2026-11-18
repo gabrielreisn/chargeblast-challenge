@@ -1,8 +1,12 @@
 "use client";
-import { useState, type FormEvent } from "react";
-import { CalendarDays, CircleDollarSign, CreditCard, ListFilter, Plus } from "lucide-react";
+import { useId, useState, type FormEvent } from "react";
 import { buttonStyles, cn, fieldStyles, noteStyles } from "@/components/ui/styles";
 import { FilterPopover } from "@/components/ui/filter-popover";
+import { unmaskAmount } from "./amount-mask";
+import { AmountInput } from "./amount-input";
+import { datePresetLabels } from "./filter-chips";
+import { fractionDigitsFor } from "./format";
+import { useFormatters } from "./format-context";
 import {
   methods,
   methodLabels,
@@ -11,7 +15,7 @@ import {
   type PaymentMethod,
   type PaymentStatus,
 } from "./model";
-import type { PaymentQuery } from "./url-state";
+import type { DatePreset, PaymentQuery } from "./url-state";
 
 export type UpdateQuery = (patch: Partial<PaymentQuery>, replace?: boolean) => void;
 
@@ -57,10 +61,11 @@ function MultiSelect<Value extends string>({
   );
 }
 
-const datePresets = [
-  { value: "today", label: "Today" },
-  { value: "7", label: "Last 7 days" },
-  { value: "30", label: "Last 30 days" },
+const datePresets: { value: DatePreset | ""; label: string }[] = [
+  ...Object.entries(datePresetLabels).map(([value, label]) => ({
+    value: value as DatePreset,
+    label,
+  })),
   { value: "", label: "All time" },
 ];
 
@@ -124,13 +129,16 @@ function DateForm({ query, update }: QueryControlProps) {
 }
 
 function AmountForm({ query, update }: QueryControlProps) {
+  const { locale } = useFormatters();
+  const id = useId();
   // Validation feedback for the last submit; not derivable from props.
   const [error, setError] = useState("");
+  const fractionDigits = query.currency ? fractionDigitsFor(query.currency) : 2;
   function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const min = String(data.get("min"));
-    const max = String(data.get("max"));
+    const min = unmaskAmount(String(data.get("min")), locale);
+    const max = unmaskAmount(String(data.get("max")), locale);
     if (min && max && Number(min) > Number(max)) {
       setError("Minimum must not exceed maximum.");
       return;
@@ -139,33 +147,31 @@ function AmountForm({ query, update }: QueryControlProps) {
     update({ min, max });
   }
   return (
-    <form className={formStyles} onSubmit={apply}>
-      <label className={labelStyles}>
-        Minimum amount
-        <input
-          className={fieldStyles}
+    // Keyed by currency so a precision change re-masks the default values.
+    <form key={fractionDigits} className={formStyles} onSubmit={apply}>
+      <div className={labelStyles}>
+        <label htmlFor={`${id}-min`}>Minimum amount</label>
+        <AmountInput
+          id={`${id}-min`}
           name="min"
-          type="number"
-          step="0.001"
-          min="0"
-          placeholder="0.00"
           defaultValue={query.min}
+          fractionDigits={fractionDigits}
         />
-      </label>
-      <label className={labelStyles}>
-        Maximum amount
-        <input
-          className={fieldStyles}
+      </div>
+      <div className={labelStyles}>
+        <label htmlFor={`${id}-max`}>Maximum amount</label>
+        <AmountInput
+          id={`${id}-max`}
           name="max"
-          type="number"
-          step="0.001"
-          min="0"
-          placeholder="No limit"
           defaultValue={query.max}
+          fractionDigits={fractionDigits}
+          placeholder="No limit"
         />
-      </label>
+      </div>
       <p className={noteStyles}>
-        Amounts use each currency’s displayed units. Choose a currency to compare like for like.
+        {query.currency
+          ? `Amounts in ${query.currency.toUpperCase()}.`
+          : "Amounts use each currency’s displayed units. Choose a currency to compare like for like."}
       </p>
       {error && (
         <p role="alert" className={errorStyles}>
@@ -184,21 +190,13 @@ type PaymentFiltersProps = QueryControlProps & { currencies: string[] };
 export function PaymentFilters({ query, update, currencies }: PaymentFiltersProps) {
   return (
     <>
-      <FilterPopover
-        label="Date and time"
-        icon={<CalendarDays size={12} />}
-        active={Boolean(query.date)}
-      >
+      <FilterPopover label="Date and time" active={Boolean(query.date)}>
         <DateForm query={query} update={update} />
       </FilterPopover>
-      <FilterPopover
-        label="Amount"
-        icon={<CircleDollarSign size={12} />}
-        active={Boolean(query.min || query.max)}
-      >
+      <FilterPopover label="Amount" active={Boolean(query.min || query.max)}>
         <AmountForm query={query} update={update} />
       </FilterPopover>
-      <FilterPopover label="Currency" icon={<Plus size={12} />} active={Boolean(query.currency)}>
+      <FilterPopover label="Currency" active={Boolean(query.currency)}>
         <div className={optionsStyles}>
           <label className="flex flex-col gap-1.75 text-11">
             Payment currency
@@ -217,11 +215,7 @@ export function PaymentFilters({ query, update, currencies }: PaymentFiltersProp
           </label>
         </div>
       </FilterPopover>
-      <FilterPopover
-        label="Status"
-        icon={<ListFilter size={12} />}
-        active={query.statuses.length > 0}
-      >
+      <FilterPopover label="Status" active={query.statuses.length > 0}>
         <MultiSelect<PaymentStatus>
           values={statuses}
           labels={statusLabels}
@@ -229,11 +223,7 @@ export function PaymentFilters({ query, update, currencies }: PaymentFiltersProp
           onChange={(values) => update({ statuses: values })}
         />
       </FilterPopover>
-      <FilterPopover
-        label="Payment method"
-        icon={<CreditCard size={12} />}
-        active={query.methods.length > 0}
-      >
+      <FilterPopover label="Payment method" active={query.methods.length > 0}>
         <MultiSelect<PaymentMethod>
           values={methods}
           labels={methodLabels}

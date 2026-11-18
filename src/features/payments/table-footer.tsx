@@ -1,6 +1,7 @@
 "use client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { buttonStyles } from "@/components/ui/styles";
+import { useFormatters } from "./format-context";
 import type { PaymentQuery } from "./url-state";
 import type { UpdateQuery } from "./filters";
 
@@ -16,17 +17,18 @@ type TableFooterProps = {
 const pageSizes: PaymentQuery["size"][] = [25, 50, 100];
 
 export function TableFooter({ count, selected, page, pages, query, update }: TableFooterProps) {
+  const { formatNumber } = useFormatters();
   const first = count ? (page - 1) * query.size + 1 : 0;
   const last = Math.min(page * query.size, count);
   return (
     <div className="mt-3.25 flex flex-col gap-3.75 text-10 text-[#758095] md:flex-row md:items-start md:justify-between md:gap-3 lg:items-center">
       <span>
-        {selected > 0 ? `${selected} selected · ` : ""}
+        {selected > 0 ? `${formatNumber(selected)} selected · ` : ""}
         Viewing{" "}
         <strong className="font-medium text-[#4e5a70]">
-          {first}–{last}
+          {formatNumber(first)}–{formatNumber(last)}
         </strong>{" "}
-        of <strong className="font-medium text-[#4e5a70]">{count.toLocaleString()}</strong> results
+        of <strong className="font-medium text-[#4e5a70]">{formatNumber(count)}</strong> results
       </span>
       <div className="flex w-full flex-wrap items-center gap-1.75 md:w-auto md:justify-end md:gap-2 lg:flex-nowrap">
         <label className="mr-auto flex items-center gap-1.75 whitespace-nowrap md:mr-0">

@@ -19,7 +19,7 @@ export default defineConfig({
       ],
       reporter: ["text", "html", "lcov", "json-summary"],
       // Ratchet: set just below current coverage. Raise these when coverage improves; never lower them.
-      thresholds: { statements: 88, branches: 81, functions: 82, lines: 88 },
+      thresholds: { statements: 93, branches: 83, functions: 90, lines: 93 },
     },
   },
 });

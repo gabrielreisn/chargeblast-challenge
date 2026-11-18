@@ -3,18 +3,9 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useSelectedLayoutSegment } from "next/navigation";
 import { ChartNoAxesCombined, Plus, Settings, Share } from "lucide-react";
+import { transactionRoutes, type TransactionSegment } from "@/lib/transaction-routes";
 import { ReadOnlyButton } from "./read-only-button";
 import { ActiveTabIndicator } from "./route-transitions";
-
-const transactionTabs = [
-  { segment: "payments", label: "Payments" },
-  { segment: "payouts", label: "Payouts" },
-  { segment: "topups", label: "Top-ups" },
-  { segment: "standalone-3ds", label: "Standalone 3DS" },
-  { segment: "activity", label: "All activity" },
-] as const;
-
-type TransactionSegment = (typeof transactionTabs)[number]["segment"];
 
 const headingActions: Record<TransactionSegment, ReactNode> = {
   payments: (
@@ -78,7 +69,7 @@ export function TransactionsHeader() {
         className="flex h-8.25 items-start gap-5 overflow-x-auto border-b border-line text-10 font-medium whitespace-nowrap md:gap-6.25 md:text-11"
         aria-label="Transaction type"
       >
-        {transactionTabs.map((tab) => (
+        {transactionRoutes.map((tab) => (
           <Link
             key={tab.segment}
             href={`/${tab.segment}`}

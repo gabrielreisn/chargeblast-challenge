@@ -1,8 +1,10 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DashboardProviders } from "@/components/dashboard/providers";
-import { buildPayment } from "@/test/payments";
+import { buildPayment, testFormatSettings } from "@/test/payments";
 import { PaymentDetails } from "./payment-details";
+
+vi.mock("next/navigation", () => import("@/test/next-navigation"));
 
 test("shows payment facts, the refund row and the source's activity note", () => {
   const payment = buildPayment({
@@ -13,7 +15,7 @@ test("shows payment facts, the refund row and the source's activity note", () =>
   });
   render(
     <DashboardProviders>
-      <PaymentDetails payment={payment} source="stripe-api" />
+      <PaymentDetails payment={payment} source="stripe-api" formatSettings={testFormatSettings} />
     </DashboardProviders>,
   );
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("$25.00 USD");
@@ -28,7 +30,11 @@ test("shows payment facts, the refund row and the source's activity note", () =>
 test("labels the synthetic fixture as illustrative demo data", () => {
   render(
     <DashboardProviders>
-      <PaymentDetails payment={buildPayment()} source="synthetic" />
+      <PaymentDetails
+        payment={buildPayment()}
+        source="synthetic"
+        formatSettings={testFormatSettings}
+      />
     </DashboardProviders>,
   );
   expect(screen.getByText(/Illustrative demo timeline/)).toBeVisible();

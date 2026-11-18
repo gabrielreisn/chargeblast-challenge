@@ -1,29 +1,31 @@
 "use client";
 import type { ReactNode } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { X } from "lucide-react";
+import { CirclePlus, X } from "lucide-react";
 import { cn, floatingPanelStyles, iconButtonStyles } from "./styles";
 
 type FilterPopoverProps = {
   label: string;
-  icon?: ReactNode;
   active?: boolean;
   children: ReactNode;
 };
 
-/** Toolbar filter button that opens a titled popover with the filter controls. */
-export function FilterPopover({ label, icon, active = false, children }: FilterPopoverProps) {
+/**
+ * Toolbar filter pill that opens a titled popover with the filter controls. Like Stripe's,
+ * an unused filter is a dashed outline; an applied one turns solid brand.
+ */
+export function FilterPopover({ label, active = false, children }: FilterPopoverProps) {
   return (
     <Popover.Root>
       <Popover.Trigger
         className={cn(
-          "flex min-h-5.75 items-center gap-1.25 rounded-[5px] border px-1.75 py-0.75 text-10 whitespace-nowrap hover:bg-wash",
+          "flex min-h-6 items-center gap-1 rounded-full border py-0.75 pr-2.25 pl-1.5 text-10 font-semibold whitespace-nowrap",
           active
-            ? "border-brand-line bg-[#f8f6ff] text-brand"
-            : "border-[#dce0e7] bg-white text-[#687386] [&>svg]:text-[#7f8998]",
+            ? "border-solid border-brand-line bg-brand-tint text-brand"
+            : "border-dashed border-[#c0c8d2] bg-white text-ink-soft hover:border-faint hover:bg-wash [&>svg]:text-faint",
         )}
       >
-        {icon}
+        <CirclePlus size={12} aria-hidden="true" />
         {label}
       </Popover.Trigger>
       <Popover.Portal>

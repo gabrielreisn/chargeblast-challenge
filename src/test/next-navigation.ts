@@ -1,6 +1,7 @@
 // Test double for `next/navigation` that re-renders on history changes, like
 // the App Router does when client code calls history.pushState/replaceState.
 import { useSyncExternalStore } from "react";
+import { vi } from "vitest";
 
 const LOCATION_CHANGE = "test:locationchange";
 
@@ -34,9 +35,14 @@ export function useSelectedLayoutSegment() {
   return usePathname().split("/")[1] || null;
 }
 
+// One stable instance, like the App Router's, so effects that depend on it don't re-run.
+export const testRouter = {
+  push: (href: string) => window.history.pushState(null, "", href),
+  replace: (href: string) => window.history.replaceState(null, "", href),
+  /** Spy: tests assert that server components were asked to re-render. */
+  refresh: vi.fn<() => void>(),
+};
+
 export function useRouter() {
-  return {
-    push: (href: string) => window.history.pushState(null, "", href),
-    replace: (href: string) => window.history.replaceState(null, "", href),
-  };
+  return testRouter;
 }

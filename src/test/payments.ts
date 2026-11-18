@@ -1,5 +1,6 @@
 // Test data shared by the payments unit tests.
 import fixture from "../../data/payments.fixture.json";
+import { formattersFor, type FormatSettings } from "@/features/payments/format";
 import { snapshotSchema, type Payment } from "@/features/payments/model";
 
 export const fixtureSnapshot = snapshotSchema.parse(fixture);
@@ -24,3 +25,11 @@ export function buildPayment(overrides: Partial<Payment> = {}): Payment {
 export function secondsAt(iso: string) {
   return Date.parse(iso) / 1000;
 }
+
+/** Viewer settings for tests: US English in Brasília, so date boundaries differ from UTC. */
+export const testFormatSettings: FormatSettings = {
+  locale: "en-US",
+  timeZone: "America/Sao_Paulo",
+};
+
+export const testFormatters = formattersFor(testFormatSettings);
