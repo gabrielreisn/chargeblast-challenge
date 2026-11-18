@@ -69,3 +69,12 @@ export const menuLabelStyles = "block px-2 py-1.5 text-10 text-[#8993a3]";
 export const menuSeparatorStyles = "-mx-1.5 my-1.25 h-px bg-[#e8ebf0]";
 
 export const noteStyles = "my-1.5 text-10 leading-4 text-[#8490a0]";
+
+/** Sidebar row layout without horizontal padding; callers add `px-2.25` or an indent. */
+export const navItemLayout =
+  "flex min-h-7.25 items-center gap-2.25 rounded-[5px] py-1.5 2xl:min-h-8";
+
+export const navItemText = "text-11 font-medium text-[#586577] 2xl:text-12";
+
+/** Hover feedback shared by every sidebar row, including reference-only ones. */
+export const navItemHover = "transition-colors hover:bg-nav-hover hover:text-ink";

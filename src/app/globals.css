@@ -48,6 +48,7 @@
   --color-field-line: #d5d9e0;
 
   --color-sidebar: #f8f9fb;
+  --color-nav-hover: #eef0f4;
   --color-wash: #f7f8fb;
   --color-field: #f5f6f8;
   --color-toast: #1a2235;
@@ -75,6 +76,32 @@
   --animate-pop-in: pop-in 0.12s ease-out;
   /* Mirrors the entrance; `forwards` holds the hidden end frame until Radix unmounts. */
   --animate-pop-out: pop-out 0.12s ease-in forwards;
+
+  /* Radix Accordion exposes the measured panel height as a CSS variable. */
+  --animate-accordion-down: accordion-down 0.2s cubic-bezier(0.2, 0, 0, 1);
+  --animate-accordion-up: accordion-up 0.16s ease-in;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+      opacity: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+      opacity: 1;
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+      opacity: 1;
+    }
+    to {
+      height: 0;
+      opacity: 0;
+    }
+  }
 
   @keyframes pop-in {
     from {
