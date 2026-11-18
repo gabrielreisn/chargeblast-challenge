@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSelectedLayoutSegment } from "next/navigation";
 import { ChartNoAxesCombined, Plus, Settings, Share } from "lucide-react";
 import { ReadOnlyButton } from "./read-only-button";
+import { ActiveTabIndicator } from "./route-transitions";
 
 export const transactionTabs = [
   { segment: "payments", label: "Payments" },
@@ -81,10 +82,15 @@ export function TransactionsHeader() {
           <Link
             key={tab.segment}
             href={`/${tab.segment}`}
-            className="border-b-2 border-transparent pb-3.25 text-subtle hover:text-ink-strong aria-[current=page]:border-ink-strong aria-[current=page]:font-semibold aria-[current=page]:text-ink-strong"
+            data-label={tab.label}
+            // The invisible semibold copy (::after) reserves the bold width, so the active
+            // label's weight change can't shift the tabs that follow it. It's hidden from
+            // assistive tech by the empty alt text after the slash.
+            className="relative inline-flex flex-col pb-3.75 text-subtle after:invisible after:h-0 after:overflow-hidden after:font-semibold after:content-[attr(data-label)_/_''] hover:text-ink-strong aria-[current=page]:font-semibold aria-[current=page]:text-ink-strong"
             aria-current={tab.segment === active ? "page" : undefined}
           >
             {tab.label}
+            {tab.segment === active && <ActiveTabIndicator />}
           </Link>
         ))}
       </nav>

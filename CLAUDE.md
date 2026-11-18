@@ -18,6 +18,7 @@ Before finishing any change, run and pass: `pnpm lint`, `pnpm format:check` (fix
 - Repeated recipes live in `src/components/ui/styles.ts` (`buttonStyles()`, `menuStyles`, `fieldStyles`, …) and are combined with `cn()`. `cn` only joins strings, so never pass two classes that set the same property (for example `my-1.5` with `mb-0`); write the full class list instead.
 - Use state variants instead of conditional class logic where the DOM already carries the state: `aria-pressed:`, `aria-[current=page]:`, `aria-disabled:`, `data-highlighted:`, `group-hover/name:`.
 - Allowed exceptions: inline `style` for runtime values (TanStack column widths) and in `opengraph-image.tsx` (Satori supports inline styles only).
+- View transitions are the one CSS exception: their `::view-transition-*` pseudo-elements can't take utility classes, so their animations live in the "View transitions" section of `globals.css`. Use the wrappers in `src/components/dashboard/route-transitions.tsx` (`PageTransition`, `TabContentTransition`, `ActiveTabIndicator`) instead of adding new `<ViewTransition>` usages ad hoc, and keep `default="none"` so filter/sort updates never animate.
 
 ## Metadata and SEO
 
@@ -53,6 +54,13 @@ Before finishing any change, run and pass: `pnpm lint`, `pnpm format:check` (fix
 - Reset state by changing a component's `key` or keying state to its source (see the row selection in `payments-screen.tsx`). Do not use an effect to sync or reset state.
 - Use `useState` only for genuine user input with no other source of truth (dismissing a banner, copy feedback, table column layout, last-submit validation errors). Add a one-line comment explaining why the state is needed.
 - Filters, sorting and pagination live in the URL; update them through `paymentsHref()`.
+- Column reordering goes through `reorderColumns()` in `table-features.ts` (used by drag-and-drop in `column-dnd.tsx` and the Edit columns menu). Selection and actions columns are pinned via `fixedColumnIds`.
+
+## Data sources
+
+- `getPaymentsData()` in `src/lib/payments-data.ts` is the only way pages read payments. It switches on the `PAYMENTS_SOURCE` env var (`local` | `remote`, read through `parsePaymentsSource`); there is deliberately no CLI wrapper around `next`. Never import the fixture or the Stripe SDK from pages or components.
+- `remote` uses `src/features/payments/stripe-source.ts`, shared with `pnpm stripe:import`: sandbox keys only, live objects rejected, server-side only, cached with `"use cache"` + `cacheLife("minutes")`. Never pass the secret key as a cached function argument or expose it through a `NEXT_PUBLIC_` variable.
+- Files that Node runs directly (`scripts/*.ts` and what they import: `stripe-source.ts`, `normalize.ts`, `model.ts`) use relative imports with `.ts` extensions, not the `@/` alias.
 
 ## Feedback and errors
 

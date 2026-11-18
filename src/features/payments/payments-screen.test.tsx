@@ -116,3 +116,20 @@ test("date presets and slash shortcut work from the keyboard", async () => {
   await user.click(screen.getByRole("button", { name: "Last 7 days" }));
   expect(window.location.search).toContain("date=7");
 });
+
+test("reorders columns from the Edit columns menu and exposes reorder handles", async () => {
+  const user = userEvent.setup();
+  renderScreen();
+  const headings = () =>
+    within(screen.getByRole("table"))
+      .getAllByRole("columnheader")
+      .map((th) => th.textContent?.trim())
+      .filter(Boolean);
+  expect(headings().slice(0, 2)).toEqual(["Amount", "Status"]);
+  expect(screen.getByRole("button", { name: "Reorder Amount column" })).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: /Edit columns/ }));
+  await user.click(screen.getByRole("button", { name: "Move Amount right" }));
+  // The open menu hides the rest of the page from assistive tech; close it first.
+  await user.keyboard("{Escape}");
+  expect(headings().slice(0, 2)).toEqual(["Status", "Amount"]);
+});

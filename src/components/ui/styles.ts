@@ -51,9 +51,13 @@ export const textButtonStyles = "p-0.75 text-10 text-brand hover:text-brand-hove
 export const fieldStyles =
   "w-full rounded-[5px] border border-field-line bg-white px-2.5 py-2 text-12 text-ink placeholder:text-[#8490a0]";
 
-/** Surface for Radix popovers and dropdown menus. */
+/**
+ * Surface for Radix popovers and dropdown menus. Radix keeps closing content
+ * mounted while an animation runs on `data-state="closed"`, so the exit
+ * animation plays before unmounting. `motion-safe:` skips both for reduced motion.
+ */
 export const floatingPanelStyles =
-  "z-60 rounded-[7px] border border-[#e0e3eb] bg-white shadow-popover animate-pop-in motion-reduce:animate-none";
+  "z-60 rounded-[7px] border border-[#e0e3eb] bg-white shadow-popover motion-safe:data-[state=closed]:animate-pop-out motion-safe:data-[state=open]:animate-pop-in";
 
 export const menuStyles = cn(floatingPanelStyles, "min-w-55 p-1.5 text-12");
 

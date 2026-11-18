@@ -2,18 +2,17 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  getCoreRowModel,
-  useReactTable,
+  useTable,
   type ColumnOrderState,
   type ColumnSizingState,
   type RowSelectionState,
-  type VisibilityState,
+  type ColumnVisibilityState,
 } from "@tanstack/react-table";
 import { ArrowDownToLine, ExternalLink, SlidersHorizontal, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Banner } from "@/components/dashboard/banner";
 import { buttonStyles, textButtonStyles } from "@/components/ui/styles";
-import type { Payment, PaymentStatus, Snapshot } from "./model";
+import { snapshotSourceLabels, type Payment, type PaymentStatus, type Snapshot } from "./model";
 import {
   csvForPayments,
   defaultQuery,
@@ -29,6 +28,7 @@ import { PaymentTable, type MoveColumn } from "./payment-table";
 import { TableFooter } from "./table-footer";
 import { ActiveFilters } from "./active-filters";
 import { getFilterChips } from "./filter-chips";
+import { paymentTableFeatures, reorderColumns } from "./table-features";
 
 type StatusTab = { label: string; status: PaymentStatus | "" };
 
@@ -80,6 +80,12 @@ function downloadCsv(payments: Payment[]) {
   URL.revokeObjectURL(url);
 }
 
+function describeSnapshot({ source, payments }: Snapshot) {
+  const count = payments.length.toLocaleString();
+  if (source === "synthetic") return `Demo workspace · ${count} sample payments`;
+  return `${snapshotSourceLabels[source]} · ${count} payments`;
+}
+
 type PaymentsScreenProps = { snapshot: Snapshot; now: number };
 
 export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
@@ -90,7 +96,9 @@ export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
   // Table layout preferences are user input with no other source of truth.
   const [columnOrder, setColumnOrder] = useState(initialColumnOrder);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ description: true });
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({
+    description: true,
+  });
   // Selection belongs to one result set: it is keyed by the query, so any query change
   // derives an empty selection without an effect.
   const [selection, setSelection] = useState<{ key: string; rows: RowSelectionState }>({
@@ -120,12 +128,11 @@ export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
   );
   const chips = getFilterChips(query);
   const columns = usePaymentColumns(now);
-  // TanStack intentionally returns mutable APIs. React Compiler is not enabled; this component also opts out explicitly.
-  // oxlint-disable-next-line react/incompatible-library
-  const table = useReactTable({
+  // TanStack exposes mutable APIs. React Compiler is not enabled; this component also opts out explicitly.
+  const table = useTable({
+    features: paymentTableFeatures,
     data: rows,
     columns,
-    getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => row.id,
     state: { columnOrder, columnSizing, columnVisibility, rowSelection },
     onColumnOrderChange: setColumnOrder,
@@ -140,12 +147,8 @@ export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
     enableRowSelection: true,
   });
 
-  const moveColumn: MoveColumn = (id, target) => {
-    if (["select", "actions"].includes(id) || ["select", "actions"].includes(target)) return;
-    const order = columnOrder.filter((value) => value !== id);
-    order.splice(order.indexOf(target), 0, id);
-    setColumnOrder(order);
-  };
+  const moveColumn: MoveColumn = (id, target) =>
+    setColumnOrder((order) => reorderColumns(order, id, target));
 
   function exportCsv() {
     try {
@@ -232,9 +235,7 @@ export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
       />
       <div className="mt-5.5 flex flex-wrap items-start gap-1.5 pb-5 text-9 leading-3.75 text-[#98a0b0] md:flex-nowrap md:items-center md:leading-normal">
         <SlidersHorizontal size={12} aria-hidden="true" />
-        {snapshot.source === "synthetic"
-          ? "Demo workspace · 500 sample payments"
-          : `Sandbox snapshot · ${snapshot.payments.length} payments`}
+        {describeSnapshot(snapshot)}
         <span className="ml-4.5 w-full md:ml-auto md:w-auto">Dates in Brasília time (UTC−3)</span>
       </div>
     </>

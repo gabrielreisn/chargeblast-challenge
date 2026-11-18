@@ -1,20 +1,27 @@
 "use client";
-import { useRef } from "react";
-import { flexRender, type Header, type Table } from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { buttonStyles, cn } from "@/components/ui/styles";
-import type { Payment } from "./model";
 import { defaultQuery, type PaymentQuery } from "./query";
 import type { UpdateQuery } from "./filters";
+import { ColumnDndProvider, SortableCell, SortableHeaderCell } from "./column-dnd";
+import { fixedColumnIds, type PaymentHeader, type PaymentTable } from "./table-features";
 
+/** Moves a column to another column's position (see `reorderColumns`). */
 export type MoveColumn = (id: string, target: string) => void;
 
 const sortableColumns = ["created", "amount", "status"];
-const fixedColumns = ["select", "actions"];
+/** Numeric columns: header and values align to the end so digits line up. */
+const endAlignedColumns = ["amount"];
+
+const headerCellStyles =
+  "group/th relative h-7.5 border-b border-line px-2.25 py-1.5 text-10 font-semibold whitespace-nowrap text-[#566172] first:pl-1.75";
+const bodyCellStyles =
+  "h-6.75 truncate border-b border-line-soft px-2.25 py-0.75 leading-4.5 text-[#606c7e] group-last/row:border-b-0 first:pl-1.75 2xl:h-7.75";
 
 type SortButtonProps = {
-  header: Header<Payment, unknown>;
+  header: PaymentHeader;
   query: PaymentQuery;
   update: UpdateQuery;
 };
@@ -24,7 +31,7 @@ function SortButton({ header, query, update }: SortButtonProps) {
   return (
     <button
       type="button"
-      className="flex items-center gap-1.25 text-10 font-semibold [&>svg]:text-[#8c94a6]"
+      className="inline-flex items-center gap-1.25 text-10 font-semibold [&>svg]:text-[#8c94a6]"
       onClick={() =>
         update({
           sort: header.column.id as PaymentQuery["sort"],
@@ -44,7 +51,7 @@ function SortButton({ header, query, update }: SortButtonProps) {
   );
 }
 
-type ColumnResizerProps = { header: Header<Payment, unknown>; table: Table<Payment> };
+type ColumnResizerProps = { header: PaymentHeader; table: PaymentTable };
 
 function ColumnResizer({ header, table }: ColumnResizerProps) {
   return (
@@ -64,11 +71,18 @@ function ColumnResizer({ header, table }: ColumnResizerProps) {
         );
         table.setColumnSizing((current) => ({ ...current, [header.column.id]: size }));
       }}
+      // Keep the resize gesture from also starting a column drag.
+      onPointerDown={(event) => event.stopPropagation()}
       onMouseDown={header.getResizeHandler()}
       onTouchStart={header.getResizeHandler()}
       onDoubleClick={() => header.column.resetSize()}
     />
   );
+}
+
+function columnLabel(header: PaymentHeader) {
+  const label = header.column.columnDef.header;
+  return typeof label === "string" ? label : header.column.id;
 }
 
 function ariaSort(query: PaymentQuery, columnId: string) {
@@ -78,7 +92,7 @@ function ariaSort(query: PaymentQuery, columnId: string) {
 }
 
 type PaymentTableProps = {
-  table: Table<Payment>;
+  table: PaymentTable;
   query: PaymentQuery;
   update: UpdateQuery;
   moveColumn: MoveColumn;
@@ -86,40 +100,38 @@ type PaymentTableProps = {
 
 export function PaymentTable({ table, query, update, moveColumn }: PaymentTableProps) {
   "use no memo";
-  const dragged = useRef<string | null>(null);
   const rows = table.getRowModel().rows;
+  const headers = table.getHeaderGroups()[0]?.headers ?? [];
+  const reorderable = headers.filter((header) => !fixedColumnIds.includes(header.column.id));
+  const labels = Object.fromEntries(
+    reorderable.map((header) => [header.column.id, columnLabel(header)]),
+  );
   return (
     <div className="min-h-37.5 w-full overflow-x-auto border-b border-line">
-      <table
-        className="table-fixed border-collapse text-left text-11"
-        style={{ width: `max(100%, ${table.getTotalSize()}px)` }}
+      <ColumnDndProvider
+        columnIds={reorderable.map((header) => header.column.id)}
+        labels={labels}
+        moveColumn={moveColumn}
       >
-        <caption className="sr-only">
-          Payments. Sort by amount, status, or date using the column heading buttons.
-        </caption>
-        <thead>
-          {table.getHeaderGroups().map((group) => (
-            <tr key={group.id}>
-              {group.headers.map((header) => {
-                const draggable = !fixedColumns.includes(header.id);
-                return (
-                  <th
-                    key={header.id}
-                    style={{ width: header.getSize() }}
-                    aria-sort={ariaSort(query, header.column.id)}
-                    draggable={draggable}
-                    className={cn(
-                      "group/th relative h-7.5 border-b border-line px-2.25 py-1.5 text-10 font-semibold whitespace-nowrap text-[#566172] first:pl-1.75",
-                      draggable && "cursor-grab",
-                    )}
-                    onDragStart={() => (dragged.current = header.id)}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => {
-                      if (dragged.current) moveColumn(dragged.current, header.id);
-                      dragged.current = null;
-                    }}
-                  >
-                    {sortableColumns.includes(header.column.id) ? (
+        <table
+          className="table-fixed border-collapse text-left text-11"
+          style={{ width: `max(100%, ${table.getTotalSize()}px)` }}
+        >
+          <caption className="sr-only">
+            Payments. Sort by amount, status, or date using the column heading buttons. Reorder
+            columns by dragging a heading or with its reorder handle.
+          </caption>
+          <thead>
+            <tr>
+              {headers.map((header) => {
+                const columnId = header.column.id;
+                const className = cn(
+                  headerCellStyles,
+                  endAlignedColumns.includes(columnId) && "text-right",
+                );
+                const content = (
+                  <>
+                    {sortableColumns.includes(columnId) ? (
                       <SortButton header={header} query={query} update={update} />
                     ) : (
                       flexRender(header.column.columnDef.header, header.getContext())
@@ -127,31 +139,56 @@ export function PaymentTable({ table, query, update, moveColumn }: PaymentTableP
                     {header.column.getCanResize() && (
                       <ColumnResizer header={header} table={table} />
                     )}
+                  </>
+                );
+                return fixedColumnIds.includes(columnId) ? (
+                  <th key={header.id} style={{ width: header.getSize() }} className={className}>
+                    {content}
                   </th>
+                ) : (
+                  <SortableHeaderCell
+                    key={header.id}
+                    columnId={columnId}
+                    label={labels[columnId]}
+                    width={header.getSize()}
+                    ariaSort={ariaSort(query, columnId)}
+                    className={className}
+                  >
+                    {content}
+                  </SortableHeaderCell>
                 );
               })}
             </tr>
-          ))}
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.id}
-              data-selected={row.getIsSelected()}
-              className="group/row hover:bg-[#f8f9fc] data-[selected=true]:bg-[#f5f3ff]"
-            >
-              {row.getVisibleCells().map((cell) => (
-                <td
-                  key={cell.id}
-                  className="h-6.75 truncate border-b border-line-soft px-2.25 py-0.75 leading-4.5 text-[#606c7e] group-last/row:border-b-0 first:pl-1.75 2xl:h-7.75"
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={row.id}
+                data-selected={row.getIsSelected()}
+                className="group/row hover:bg-[#f8f9fc] data-[selected=true]:bg-[#f5f3ff]"
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const content = flexRender(cell.column.columnDef.cell, cell.getContext());
+                  return fixedColumnIds.includes(cell.column.id) ? (
+                    <td key={cell.id} className={bodyCellStyles}>
+                      {content}
+                    </td>
+                  ) : (
+                    <SortableCell
+                      key={cell.id}
+                      columnId={cell.column.id}
+                      width={cell.column.getSize()}
+                      className={bodyCellStyles}
+                    >
+                      {content}
+                    </SortableCell>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </ColumnDndProvider>
       {!rows.length && (
         <EmptyState
           compact

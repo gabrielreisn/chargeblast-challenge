@@ -3,13 +3,12 @@ import { useMemo } from "react";
 import Link from "next/link";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { ArrowRight, Ellipsis } from "lucide-react";
-import type { ColumnDef } from "@tanstack/react-table";
-import type { Payment } from "./model";
 import { formatAmount, formatDate, relativeTime, TIME_ZONE } from "./query";
 import { cn, menuItemStyles, menuStyles, rowIconButtonStyles } from "@/components/ui/styles";
 import { CopyId, Hint, PaymentMethodCell, StatusBadge } from "./ui";
+import type { PaymentColumnDef } from "./table-features";
 export function usePaymentColumns(now: number) {
-  return useMemo<ColumnDef<Payment>[]>(
+  return useMemo<PaymentColumnDef[]>(
     () => [
       {
         id: "select",
@@ -23,7 +22,10 @@ export function usePaymentColumns(now: number) {
             aria-label="Select this page"
             checked={table.getIsAllRowsSelected()}
             ref={(element) => {
-              if (element) element.indeterminate = table.getIsSomeRowsSelected();
+              // v9: getIsSomeRowsSelected() means "at least one", so exclude the all-selected case.
+              if (element)
+                element.indeterminate =
+                  table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected();
             }}
             onChange={table.getToggleAllRowsSelectedHandler()}
           />
@@ -44,11 +46,15 @@ export function usePaymentColumns(now: number) {
         minSize: 110,
         cell: ({ row: { original: p } }) => (
           <Link
-            className="flex items-center gap-2.25 text-[#3f4a5e] tabular-nums hover:text-brand"
+            className="group/amount flex w-full items-center justify-end gap-1.5"
             href={`/payments/${p.id}`}
           >
-            {formatAmount(p.amount, p.currency)}
-            <span className="text-10 text-[#8993a2]">{p.currency.toUpperCase()}</span>
+            {/* End-aligned tabular figures line decimals up row to row. */}
+            <span className="font-semibold text-ink tabular-nums group-hover/amount:text-brand">
+              {formatAmount(p.amount, p.currency)}
+            </span>
+            {/* Fixed width so amounts stay aligned across currency codes of different widths. */}
+            <span className="w-6.5 text-subtle">{p.currency.toUpperCase()}</span>
           </Link>
         ),
       },

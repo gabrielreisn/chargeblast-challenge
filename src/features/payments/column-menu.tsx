@@ -1,7 +1,6 @@
 "use client";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { ArrowLeft, ArrowRight, Columns3, ChevronDown, Check } from "lucide-react";
-import type { Table } from "@tanstack/react-table";
 import {
   buttonStyles,
   iconButtonStyles,
@@ -10,14 +9,14 @@ import {
   menuSeparatorStyles,
   menuStyles,
 } from "@/components/ui/styles";
-import type { Payment } from "./model";
 import type { MoveColumn } from "./payment-table";
+import type { PaymentTable } from "./table-features";
 
-type ColumnMenuProps = { table: Table<Payment>; moveColumn: MoveColumn };
+type ColumnMenuProps = { table: PaymentTable; moveColumn: MoveColumn };
 
 export function ColumnMenu({ table, moveColumn }: ColumnMenuProps) {
   "use no memo";
-  const columnOrder = table.getState().columnOrder;
+  const { columnOrder, columnVisibility } = table.state;
   return (
     <Dropdown.Root>
       <Dropdown.Trigger className={buttonStyles({ size: "sm" })}>
@@ -55,7 +54,7 @@ export function ColumnMenu({ table, moveColumn }: ColumnMenuProps) {
                     className={iconButtonStyles}
                     aria-label={`Move ${label} right`}
                     disabled={index >= columnOrder.length - 2}
-                    onClick={() => moveColumn(columnOrder[index + 1], column.id)}
+                    onClick={() => moveColumn(column.id, columnOrder[index + 1])}
                   >
                     <ArrowRight size={13} />
                   </button>
@@ -65,7 +64,7 @@ export function ColumnMenu({ table, moveColumn }: ColumnMenuProps) {
           <Dropdown.Separator className={menuSeparatorStyles} />
           <Dropdown.CheckboxItem
             className={menuItemStyles}
-            checked={table.getState().columnVisibility.description}
+            checked={columnVisibility.description}
             onCheckedChange={(checked) => table.setColumnVisibility({ description: checked })}
           >
             Show description

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
+import { PageTransition } from "@/components/dashboard/route-transitions";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PaymentDetails } from "@/features/payments/payment-details";
 import { getPaymentsData } from "@/lib/payments-data";
@@ -16,13 +17,17 @@ async function DetailsContent({ params }: DetailsContentProps) {
   const [{ id }, snapshot] = await Promise.all([params, getPaymentsData()]);
   const payment = snapshot.payments.find((p) => p.id === id);
   if (!payment) notFound();
-  return <PaymentDetails payment={payment} synthetic={snapshot.source === "synthetic"} />;
+  return <PaymentDetails payment={payment} source={snapshot.source} />;
 }
 
 export default function DetailsPage({ params }: PageProps<"/payments/[id]">) {
   return (
-    <Suspense fallback={<LoadingState label="Loading payment…" />}>
-      <DetailsContent params={params} />
-    </Suspense>
+    <PageTransition>
+      <div>
+        <Suspense fallback={<LoadingState label="Loading payment…" />}>
+          <DetailsContent params={params} />
+        </Suspense>
+      </div>
+    </PageTransition>
   );
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Check, Clock3, ExternalLink } from "lucide-react";
 import { CopyId, PaymentMethodCell, StatusBadge } from "./ui";
 import { formatAmount, formatDate, TIME_ZONE } from "./query";
-import type { Payment } from "./model";
+import { snapshotSourceLabels, type Payment, type SnapshotSource } from "./model";
 
 const sectionStyles = "border-t border-line pt-5.5 pb-6.5";
 const sectionTitleStyles = "mb-5.5 text-15 font-semibold tracking-[-0.2px]";
@@ -28,9 +28,18 @@ function TimelineItem({ icon, title, detail }: TimelineItemProps) {
   );
 }
 
-type PaymentDetailsProps = { payment: Payment; synthetic: boolean };
+type PaymentDetailsProps = { payment: Payment; source: SnapshotSource };
 
-export function PaymentDetails({ payment: p, synthetic }: PaymentDetailsProps) {
+const activityNotes: Record<SnapshotSource, string> = {
+  synthetic:
+    "Illustrative demo timeline. Only the creation timestamp is represented by the sample data.",
+  "stripe-sandbox":
+    "Snapshot activity. Import Stripe Events separately for a complete event timeline.",
+  "stripe-api":
+    "Current state from Stripe. Fetch Stripe Events separately for a complete event timeline.",
+};
+
+export function PaymentDetails({ payment: p, source }: PaymentDetailsProps) {
   const amount = formatAmount(p.amount, p.currency);
   const currency = p.currency.toUpperCase();
   return (
@@ -86,11 +95,7 @@ export function PaymentDetails({ payment: p, synthetic }: PaymentDetailsProps) {
           </section>
           <section className={sectionStyles}>
             <h2 className={sectionTitleStyles}>Activity</h2>
-            <p className={noteStyles}>
-              {synthetic
-                ? "Illustrative demo timeline. Only the creation timestamp is represented by the sample data."
-                : "Snapshot activity. Import Stripe Events separately for a complete event timeline."}
-            </p>
+            <p className={noteStyles}>{activityNotes[source]}</p>
             <TimelineItem
               icon={<Check size={14} />}
               title={`Current status: ${p.status}`}
@@ -106,7 +111,7 @@ export function PaymentDetails({ payment: p, synthetic }: PaymentDetailsProps) {
             <h2 className={sectionTitleStyles}>Metadata</h2>
             <dl className={definitionListStyles}>
               <dt>Data source</dt>
-              <dd>{synthetic ? "Synthetic demo fixture" : "Stripe sandbox snapshot"}</dd>
+              <dd>{snapshotSourceLabels[source]}</dd>
               <dt>Mode</dt>
               <dd>Sandbox</dd>
             </dl>
