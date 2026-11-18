@@ -224,3 +224,35 @@ test("exports the filtered view as CSV and reports failures with a retry toast",
     Reflect.deleteProperty(URL, "revokeObjectURL");
   }
 });
+
+test("shows Stripe's status tabs and the remaining statuses in the more menu", async () => {
+  const user = userEvent.setup();
+  renderScreen();
+  const tabs = within(screen.getByRole("group", { name: "Payment status views" }));
+  expect(
+    tabs
+      .getAllByRole("button")
+      .map((tab) => tab.firstChild?.textContent)
+      .slice(0, 7),
+  ).toEqual(["All", "Succeeded", "Refunded", "Disputed", "Failed", "Uncaptured", "Blocked"]);
+
+  await user.click(tabs.getByRole("button", { name: "More statuses" }));
+  await user.click(screen.getByRole("menuitemradio", { name: /Canceled/ }));
+  expect(window.location.search).toContain("status=canceled");
+  expect(bodyRows().every((row) => within(row).getByText("Canceled"))).toBe(true);
+  const more = tabs.getByRole("button", { name: "More statuses: Canceled" });
+  expect(more).toHaveAttribute("aria-pressed", "true");
+});
+
+test("shows an empty view for a status with no payments and clears it", async () => {
+  const user = userEvent.setup();
+  renderScreen();
+  await user.click(screen.getByRole("button", { name: /^Uncaptured/ }));
+  expect(screen.getByRole("heading", { name: "No uncaptured test payments" })).toBeVisible();
+  expect(screen.getByText("Uncaptured test payments will show up here.")).toBeVisible();
+  expect(screen.queryByRole("table")).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Clear all" }));
+  expect(window.location.search).toBe("");
+  expect(bodyRows()).toHaveLength(25);
+});

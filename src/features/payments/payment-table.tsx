@@ -18,7 +18,9 @@ const sortableColumns = ["created", "amount", "status"];
 const endAlignedColumns = ["amount"];
 
 const headerCellStyles =
-  "group/th relative h-7.5 border-b border-line px-2.25 py-1.5 text-10 font-semibold whitespace-nowrap text-[#566172] first:pl-1.75";
+  // Sticky inside the scrolling body. Collapsed table borders don't travel with sticky cells,
+  // so the bottom rule is a pseudo-element. z-10 and bg-white match the dragging styles.
+  "group/th sticky top-0 z-10 h-7.5 bg-white px-2.25 py-1.5 text-10 font-semibold whitespace-nowrap text-[#566172] after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-line first:pl-1.75";
 const bodyCellStyles =
   "h-6.75 truncate border-b border-line-soft px-2.25 py-0.75 leading-4.5 text-[#606c7e] group-last/row:border-b-0 first:pl-1.75 2xl:h-7.75";
 
@@ -109,100 +111,104 @@ export function PaymentTable({ table, query, update, moveColumn }: PaymentTableP
     reorderable.map((header) => [header.column.id, columnLabel(header)]),
   );
   return (
-    <div className="min-h-37.5 w-full overflow-x-auto border-b border-line">
-      <ColumnDndProvider
-        columnIds={reorderable.map((header) => header.column.id)}
-        labels={labels}
-        moveColumn={moveColumn}
+    // Outer box scrolls sideways with a visible scrollbar; from md up the inner box fills the
+    // remaining height and scrolls rows with a hidden scrollbar, so filters stay in view.
+    <div className="min-h-37.5 w-full overflow-x-auto border-b border-line md:flex md:min-h-60 md:flex-1 md:flex-col">
+      <div
+        className="md:min-h-0 md:flex-1 md:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ width: `max(100%, ${table.getTotalSize()}px)` }}
       >
-        <table
-          className="table-fixed border-collapse text-left text-11"
-          style={{ width: `max(100%, ${table.getTotalSize()}px)` }}
+        <ColumnDndProvider
+          columnIds={reorderable.map((header) => header.column.id)}
+          labels={labels}
+          moveColumn={moveColumn}
         >
-          <caption className="sr-only">
-            Payments. Sort by amount, status, or date using the column heading buttons. Reorder
-            columns by dragging a heading or with its reorder handle.
-          </caption>
-          <thead>
-            <tr>
-              {headers.map((header) => {
-                const columnId = header.column.id;
-                const className = cn(
-                  headerCellStyles,
-                  endAlignedColumns.includes(columnId) && "text-right",
-                );
-                const content = (
-                  <>
-                    {sortableColumns.includes(columnId) ? (
-                      <SortButton header={header} query={query} update={update} />
-                    ) : (
-                      flexRender(header.column.columnDef.header, header.getContext())
-                    )}
-                    {header.column.getCanResize() && (
-                      <ColumnResizer header={header} table={table} />
-                    )}
-                  </>
-                );
-                return fixedColumnIds.includes(columnId) ? (
-                  <th key={header.id} style={{ width: header.getSize() }} className={className}>
-                    {content}
-                  </th>
-                ) : (
-                  <SortableHeaderCell
-                    key={header.id}
-                    columnId={columnId}
-                    label={labels[columnId]}
-                    width={header.getSize()}
-                    ariaSort={ariaSort(query, columnId)}
-                    className={className}
-                  >
-                    {content}
-                  </SortableHeaderCell>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.id}
-                data-selected={row.getIsSelected()}
-                className="group/row hover:bg-[#f8f9fc] data-[selected=true]:bg-[#f5f3ff]"
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const content = flexRender(cell.column.columnDef.cell, cell.getContext());
-                  return fixedColumnIds.includes(cell.column.id) ? (
-                    <td key={cell.id} className={bodyCellStyles}>
+          <table className="w-full table-fixed border-collapse text-left text-11">
+            <caption className="sr-only">
+              Payments. Sort by amount, status, or date using the column heading buttons. Reorder
+              columns by dragging a heading or with its reorder handle.
+            </caption>
+            <thead>
+              <tr>
+                {headers.map((header) => {
+                  const columnId = header.column.id;
+                  const className = cn(
+                    headerCellStyles,
+                    endAlignedColumns.includes(columnId) && "text-right",
+                  );
+                  const content = (
+                    <>
+                      {sortableColumns.includes(columnId) ? (
+                        <SortButton header={header} query={query} update={update} />
+                      ) : (
+                        flexRender(header.column.columnDef.header, header.getContext())
+                      )}
+                      {header.column.getCanResize() && (
+                        <ColumnResizer header={header} table={table} />
+                      )}
+                    </>
+                  );
+                  return fixedColumnIds.includes(columnId) ? (
+                    <th key={header.id} style={{ width: header.getSize() }} className={className}>
                       {content}
-                    </td>
+                    </th>
                   ) : (
-                    <SortableCell
-                      key={cell.id}
-                      columnId={cell.column.id}
-                      width={cell.column.getSize()}
-                      className={bodyCellStyles}
+                    <SortableHeaderCell
+                      key={header.id}
+                      columnId={columnId}
+                      label={labels[columnId]}
+                      width={header.getSize()}
+                      ariaSort={ariaSort(query, columnId)}
+                      className={className}
                     >
                       {content}
-                    </SortableCell>
+                    </SortableHeaderCell>
                   );
                 })}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </ColumnDndProvider>
-      {!rows.length && (
-        <EmptyState
-          compact
-          icon={<Search size={18} />}
-          title="No payments found"
-          description="Try a different search or adjust your filters."
-        >
-          <button type="button" className={buttonStyles()} onClick={() => update(defaultQuery)}>
-            Clear all filters
-          </button>
-        </EmptyState>
-      )}
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr
+                  key={row.id}
+                  data-selected={row.getIsSelected()}
+                  className="group/row hover:bg-[#f8f9fc] data-[selected=true]:bg-[#f5f3ff]"
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const content = flexRender(cell.column.columnDef.cell, cell.getContext());
+                    return fixedColumnIds.includes(cell.column.id) ? (
+                      <td key={cell.id} className={bodyCellStyles}>
+                        {content}
+                      </td>
+                    ) : (
+                      <SortableCell
+                        key={cell.id}
+                        columnId={cell.column.id}
+                        width={cell.column.getSize()}
+                        className={bodyCellStyles}
+                      >
+                        {content}
+                      </SortableCell>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ColumnDndProvider>
+        {!rows.length && (
+          <EmptyState
+            compact
+            icon={<Search size={18} />}
+            title="No payments found"
+            description="Try a different search or adjust your filters."
+          >
+            <button type="button" className={buttonStyles()} onClick={() => update(defaultQuery)}>
+              Clear all filters
+            </button>
+          </EmptyState>
+        )}
+      </div>
     </div>
   );
 }

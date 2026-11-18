@@ -13,7 +13,7 @@ export function Banner({ icon, children, action }: BannerProps) {
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
   return (
-    <div className="my-4.25 flex items-start gap-2 rounded-[5px] border border-[#edf0f5] bg-wash px-2.5 py-1.75 text-10 leading-4 text-[#667185] md:items-center">
+    <div className="mt-4.25 flex items-start gap-2 rounded-[5px] border border-[#edf0f5] bg-wash px-2.5 py-1.75 text-10 leading-4 text-[#667185] md:items-center">
       <span className="flex shrink-0 text-[#454c5e]">{icon}</span>
       <span className="flex-1 md:flex-none">{children}</span>
       <a

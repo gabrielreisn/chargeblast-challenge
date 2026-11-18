@@ -90,25 +90,50 @@ function commonFields({ charge, customer, paymentMethod, receiptEmail }: Payment
   };
 }
 
-/**
- * Collapses PaymentIntent statuses into the four table statuses. Any refund wins;
- * canceled intents and declined payment attempts are failures; every other open
- * state (processing, requires_action, requires_capture, …) is pending.
- */
-function paymentIntentStatus(intent: Stripe.PaymentIntent, amountRefunded: number): PaymentStatus {
-  if (amountRefunded > 0) return "refunded";
-  if (intent.status === "succeeded") return "succeeded";
-  if (intent.status === "canceled") return "failed";
-  if (intent.status === "requires_payment_method" && intent.last_payment_error) return "failed";
-  return "pending";
+/** Radar blocks a payment by failing its charge with a "blocked" outcome. */
+function isBlocked(charge: Stripe.Charge | null) {
+  return charge?.outcome?.type === "blocked";
 }
 
-/** Same mapping for legacy Charges; an uncaptured charge is still pending. */
-function chargeStatus(charge: Stripe.Charge, amountRefunded: number): PaymentStatus {
+/**
+ * Maps a PaymentIntent to Stripe's dashboard statuses. A dispute outranks a refund, which
+ * outranks the intent's own state. A declined attempt leaves the intent waiting for a new
+ * payment method: Radar blocks show as blocked, other declines as failed, and an intent that
+ * never had an attempt (or still needs the customer) as incomplete.
+ */
+function paymentIntentStatus(
+  intent: Stripe.PaymentIntent,
+  charge: Stripe.Charge | null,
+  amountRefunded: number,
+): PaymentStatus {
+  if (charge?.disputed) return "disputed";
   if (amountRefunded > 0) return "refunded";
+  switch (intent.status) {
+    case "succeeded":
+      return "succeeded";
+    case "requires_capture":
+      return "uncaptured";
+    case "canceled":
+      return "canceled";
+    case "processing":
+      return "pending";
+    case "requires_payment_method":
+      if (isBlocked(charge)) return "blocked";
+      return intent.last_payment_error ? "failed" : "incomplete";
+    default:
+      // requires_confirmation, requires_action: waiting on the customer.
+      return "incomplete";
+  }
+}
+
+/** Same precedence for legacy Charges; a succeeded charge that wasn't captured is uncaptured. */
+function chargeStatus(charge: Stripe.Charge, amountRefunded: number): PaymentStatus {
+  if (charge.disputed) return "disputed";
+  if (amountRefunded > 0) return "refunded";
+  if (isBlocked(charge)) return "blocked";
   if (charge.status === "failed") return "failed";
-  if (charge.status === "succeeded" && charge.captured) return "succeeded";
-  return "pending";
+  if (charge.status === "pending") return "pending";
+  return charge.captured ? "succeeded" : "uncaptured";
 }
 
 /** Uncaptured charges report "succeeded"; name them explicitly for the details page. */
@@ -136,7 +161,7 @@ export function normalizePayment(intent: Stripe.PaymentIntent) {
     id: intent.id,
     amount: intent.amount,
     currency: intent.currency,
-    status: paymentIntentStatus(intent, fields.amountRefunded),
+    status: paymentIntentStatus(intent, charge, fields.amountRefunded),
     sourceStatus: intent.status,
     created: intent.created,
     description: intent.description,

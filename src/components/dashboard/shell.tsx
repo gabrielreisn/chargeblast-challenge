@@ -80,7 +80,7 @@ export function DashboardShell({ children, search }: DashboardShellProps) {
     >
       <DesktopSidebar collapsed={collapsed} />
       <SidebarToggle collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
-      <div className="ml-(--sidebar) flex min-h-screen flex-col px-3.75 md:px-5 lg:px-7.5 2xl:px-9.5 motion-safe:transition-[margin] motion-safe:duration-200">
+      <div className="ml-(--sidebar) flex min-h-screen flex-col px-3.75 md:h-dvh md:min-h-0 md:px-5 lg:px-7.5 2xl:px-9.5 motion-safe:transition-[margin] motion-safe:duration-200">
         <header className="flex h-15 items-center justify-between gap-3 md:h-16.5 md:gap-6">
           <MobileSidebar />
           {search}
@@ -117,7 +117,12 @@ export function DashboardShell({ children, search }: DashboardShellProps) {
             <UserMenu />
           </div>
         </header>
-        <main id="main-content" className="min-w-0 flex-1">
+        {/* From md up the shell is one viewport tall: the top bar and footer stay put and pages
+            scroll inside main. Full-height pages (the payments list) fill it as a flex column. */}
+        <main
+          id="main-content"
+          className="min-w-0 flex-1 md:flex md:min-h-0 md:flex-col md:overflow-y-auto"
+        >
           {children}
         </main>
         <footer className="mt-6.25 flex items-center justify-between gap-2.5 border-t border-[#f1f3f6] py-4 text-8 text-ghost md:text-9">
