@@ -1,7 +1,7 @@
 "use client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { buttonStyles } from "@/components/ui/styles";
-import type { PaymentQuery } from "./query";
+import type { PaymentQuery } from "./url-state";
 import type { UpdateQuery } from "./filters";
 
 type TableFooterProps = {

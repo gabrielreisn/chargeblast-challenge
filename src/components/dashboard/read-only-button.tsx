@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { Hint } from "@/features/payments/ui";
+import { Hint } from "@/components/ui/hint";
 import { buttonStyles } from "@/components/ui/styles";
 
 const READ_ONLY_HINT = "This read-only demo doesn’t move money";

@@ -135,3 +135,33 @@ test("reorders columns from the Edit columns menu and exposes reorder handles", 
   await user.keyboard("{Escape}");
   expect(headings().slice(0, 2)).toEqual(["Status", "Amount"]);
 });
+
+test("exports the filtered view as CSV and reports failures with a retry toast", async () => {
+  const user = userEvent.setup();
+  // jsdom has no Blob URLs, so provide them for this test and remove them afterwards.
+  const createObjectURL = vi.fn<(blob: Blob) => string>(() => "blob:payments");
+  Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn<(url: string) => void>() });
+  const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  try {
+    renderScreen();
+    await user.click(screen.getByRole("button", { name: /^Failed/ }));
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    expect(click).toHaveBeenCalledOnce();
+    const failedCount = snapshot.payments.filter((p) => p.status === "failed").length;
+    const csv = await createObjectURL.mock.calls[0][0].text();
+    expect(csv.split("\r\n")).toHaveLength(1 + failedCount);
+    expect(await screen.findByText(`Exported ${failedCount} payments`)).toBeVisible();
+
+    createObjectURL.mockImplementation(() => {
+      throw new Error("Blob URLs unavailable");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    expect(await screen.findByText("Export failed")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  } finally {
+    click.mockRestore();
+    Reflect.deleteProperty(URL, "createObjectURL");
+    Reflect.deleteProperty(URL, "revokeObjectURL");
+  }
+});

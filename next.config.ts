@@ -8,15 +8,6 @@ const nextConfig: NextConfig = {
     return [{ source: "/", destination: "/payments", permanent: false }];
   },
   partialPrefetching: true,
-  turbopack: {
-    root: process.cwd(),
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
-  },
 };
 
 export default nextConfig;

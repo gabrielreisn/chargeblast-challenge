@@ -23,7 +23,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { Hint } from "@/features/payments/ui";
+import { Hint } from "@/components/ui/hint";
 import {
   cn,
   desktopIconButtonStyles,

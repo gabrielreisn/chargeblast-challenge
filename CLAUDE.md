@@ -16,6 +16,7 @@ Before finishing any change, run and pass: `pnpm lint`, `pnpm format:check` (fix
 ## Styling: Tailwind only
 
 - Style with Tailwind utility classes in JSX. Do not add CSS classes, CSS modules, inline `style` for static design, or new rules to `globals.css`.
+- Tailwind runs through the standard `@tailwindcss/postcss` plugin (`postcss.config.mjs`); don't add a custom Turbopack CSS loader.
 - `src/app/globals.css` holds only `@import "tailwindcss"`, the `@theme` design tokens, and a minimal `@layer base`. When a value repeats, add a token to `@theme` (colors, font sizes, shadows, animations, breakpoints) instead of a class.
 - Font sizes are tokens named by pixel value: `text-10` = 10px. Breakpoints are `md` 700px, `lg` 1100px, `2xl` 1600px.
 - Repeated recipes live in `src/components/ui/styles.ts` (`buttonStyles()`, `menuStyles`, `fieldStyles`, …) and are combined with `cn()`. `cn` only joins strings, so never pass two classes that set the same property (for example `my-1.5` with `mb-0`); write the full class list instead.
@@ -69,12 +70,14 @@ Before finishing any change, run and pass: `pnpm lint`, `pnpm format:check` (fix
 ## Feedback and errors
 
 - Rendering and data-loading failures are handled by route boundaries: `app/(dashboard)/(transactions)/error.tsx` (tabs stay usable), `app/(dashboard)/error.tsx`, and `app/global-error.tsx`. They render `ErrorState` and receive `{ error, retry }`.
-- Failures from user actions (copy, export, requests) show a toast. Use `requestJson()` and `toastRequestError()` from `src/lib/api-client.ts` for HTTP calls; never surface raw server messages.
+- Failures from user actions (copy, export, future requests) show a sonner toast (`toast.error` with a plain-language description); never surface raw server messages. A request helper (`requestJson`/`toastRequestError`) existed before but was removed while unused; restore it from git history (commit `fd0268c`) when the first client-side request is added.
 - Use `EmptyState` for empty and placeholder views, and `LoadingState` for Suspense fallbacks.
 
 ## Structure
 
 - `src/app/(dashboard)/layout.tsx` renders the shell (sidebar, top bar, providers) once. `(transactions)/layout.tsx` adds the Transactions header and tabs; tab metadata lives in `transactionTabs` in `transactions-header.tsx`.
-- Feature code lives in `src/features/<feature>/`, shared UI in `src/components/`, and server-only data access in `src/lib/`.
-- Tests sit next to the code as `*.test.ts(x)`. Mock `next/navigation` with `vi.mock("next/navigation", () => import("@/test/next-navigation"))`, which re-renders on history changes like the App Router does.
+- Feature code lives in `src/features/<feature>/`, shared UI in `src/components/`, and server-only data access in `src/lib/`. `components/` never imports from `features/`; generic primitives (`Hint`, `FilterPopover`, style recipes) live in `src/components/ui/`.
+- Payments logic is split by concern: `url-state.ts` (parse/serialize the URL query, `paymentsHref`), `format.ts` (amounts, dates, relative time), `query-payments.ts` (filtering and sorting), `csv.ts` (export). Screen pieces are small components (`status-tabs.tsx`, `table-toolbar.tsx`, `data-note.tsx`) composed by `payments-screen.tsx`.
+- Prefer Server Components; put `"use client"` on the smallest interactive piece (for example `payment-details.tsx` is a Server Component that renders the client `CopyId`).
+- Tests sit next to the code as `*.test.ts(x)`; shared payment test data comes from `src/test/payments.ts` (`buildPayment`, `testNow`). Mock `next/navigation` with `vi.mock("next/navigation", () => import("@/test/next-navigation"))`, which re-renders on history changes like the App Router does.
 - This is a read-only demo: never add actions that move money. Reference-only controls use `ReadOnlyButton`.

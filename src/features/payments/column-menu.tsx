@@ -9,8 +9,7 @@ import {
   menuSeparatorStyles,
   menuStyles,
 } from "@/components/ui/styles";
-import type { MoveColumn } from "./payment-table";
-import { fixedColumnIds, type PaymentTable } from "./table-features";
+import { fixedColumnIds, type MoveColumn, type PaymentTable } from "./table-features";
 
 type ColumnMenuProps = { table: PaymentTable; moveColumn: MoveColumn };
 

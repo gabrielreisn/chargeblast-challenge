@@ -125,3 +125,29 @@ describe("legacy charge normalization", () => {
     expect(() => normalizeCharge(charge({ livemode: true }))).toThrow("Live payments");
   });
 });
+
+describe("customer contact cleanup", () => {
+  test("treats an email typed into the billing name as the email", () => {
+    expect(
+      normalizeCharge(
+        charge({
+          billing_details: { name: "buyer@example.com", email: null },
+          receipt_email: null,
+        }),
+      ).customer,
+    ).toMatchObject({ name: null, email: "buyer@example.com" });
+  });
+  test("keeps a known email and drops the email-shaped name", () => {
+    expect(
+      normalizeCharge(
+        charge({
+          billing_details: { name: "old@example.com", email: "real@example.com" },
+          receipt_email: null,
+        }),
+      ).customer,
+    ).toMatchObject({ name: null, email: "real@example.com" });
+  });
+  test("leaves ordinary names alone", () => {
+    expect(normalizeCharge(charge()).customer).toMatchObject({ name: "Legacy Buyer" });
+  });
+});

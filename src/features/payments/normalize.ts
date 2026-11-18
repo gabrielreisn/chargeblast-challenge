@@ -28,6 +28,20 @@ const methodByStripeType: Record<string, Payment["method"]> = {
   link: "wallet",
 };
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type CustomerContact = { name: string | null; email: string | null };
+
+/**
+ * Some legacy charges were created with the email typed into the billing name.
+ * Treat an email-shaped name as the email (unless one is already known) so the
+ * UI doesn't show an address as the customer's name.
+ */
+function separateEmailFromName({ name, email }: CustomerContact): CustomerContact {
+  if (!name || !EMAIL_PATTERN.test(name.trim())) return { name, email };
+  return { name: null, email: email ?? name.trim() };
+}
+
 // Deleted customers carry no `livemode`, so check for the field instead of typing it.
 function assertTestMode(objects: (object | null)[]) {
   if (objects.some((object) => object && "livemode" in object && object.livemode === true))
@@ -49,20 +63,23 @@ function commonFields({ charge, customer, paymentMethod, receiptEmail }: Payment
   const card = details?.card ?? paymentMethod?.card;
   const bank = details?.us_bank_account ?? paymentMethod?.us_bank_account;
   const wallet = card?.wallet?.type ?? null;
+  const contact = separateEmailFromName({
+    name:
+      expandedCustomer?.name ??
+      charge?.billing_details?.name ??
+      paymentMethod?.billing_details?.name ??
+      null,
+    email:
+      expandedCustomer?.email ??
+      charge?.billing_details?.email ??
+      paymentMethod?.billing_details?.email ??
+      receiptEmail ??
+      null,
+  });
   return {
     customer: {
       id: typeof customer === "string" ? customer : (customer?.id ?? null),
-      name:
-        expandedCustomer?.name ??
-        charge?.billing_details?.name ??
-        paymentMethod?.billing_details?.name ??
-        null,
-      email:
-        expandedCustomer?.email ??
-        charge?.billing_details?.email ??
-        paymentMethod?.billing_details?.email ??
-        receiptEmail ??
-        null,
+      ...contact,
     },
     method: paymentMethodFor(type, wallet),
     methodType: type,

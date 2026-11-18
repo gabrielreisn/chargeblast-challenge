@@ -1,3 +1,8 @@
+> **Historical document.** This is the plan written before implementation. It
+> no longer matches the code (for example the Stripe importer, local snapshots
+> and file layout described here were later removed or changed). See the README
+> and `CLAUDE.md` for the current state.
+
 # Chargeblast Stripe Payments screen implementation plan
 
 Status: implementation authorized. Use the official Stripe SDK; skip the standalone import command.
