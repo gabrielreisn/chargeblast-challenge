@@ -11,8 +11,6 @@ import {
   ChevronDown,
   CircleHelp,
   CircleUserRound,
-  CreditCard,
-  Ellipsis,
   ExternalLink,
   FileChartColumn,
   House,
@@ -32,7 +30,12 @@ import {
   menuLabelStyles,
   menuSeparatorStyles,
   menuStyles,
+  navItemHover,
+  navItemLayout,
+  navItemText,
 } from "@/components/ui/styles";
+import { ProductsNav } from "./products-nav";
+import { UnavailableNavLink } from "./unavailable-nav-link";
 
 type NavEntry = { icon: LucideIcon; label: string };
 
@@ -50,29 +53,21 @@ const shortcuts: NavEntry[] = [
   { icon: Link2, label: "Sigma" },
   { icon: Shield, label: "Radar" },
 ];
-const products: NavEntry[] = [
-  { icon: Link2, label: "Connect" },
-  { icon: CreditCard, label: "Payments" },
-  { icon: BookOpen, label: "Billing" },
-  { icon: FileChartColumn, label: "Reporting" },
-  { icon: Ellipsis, label: "More" },
-];
-
-// Layout only; each nav item variant sets its own text size, weight and color.
-const navItemLayout =
-  "flex min-h-7.25 items-center gap-2.25 rounded-[5px] px-2.25 py-1.5 2xl:min-h-8";
-const navItemText = "text-11 font-medium text-[#586577] 2xl:text-12";
 const navSectionStyles = "mx-2.25 mt-6.25 mb-1.5 text-10 text-[#8490a0]";
 
-type NavItemProps = NavEntry & { expandable?: boolean };
-
-function UnavailableNavItem({ icon: Icon, label, expandable = false }: NavItemProps) {
+function UnavailableNavItem({ icon: Icon, label }: NavEntry) {
   return (
-    <span className={cn(navItemLayout, navItemText, "cursor-default")}>
+    <UnavailableNavLink
+      className={cn(
+        navItemLayout,
+        navItemText,
+        navItemHover,
+        "w-full cursor-default px-2.25 text-left",
+      )}
+    >
       <Icon size={14} strokeWidth={1.7} aria-hidden="true" />
       {label}
-      {expandable && <ChevronDown size={11} className="ml-auto" aria-hidden="true" />}
-    </span>
+    </UnavailableNavLink>
   );
 }
 
@@ -125,14 +120,14 @@ function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-(--sidebar) flex-col border-r border-line bg-sidebar px-3 pt-4.5 md:flex">
       <AccountMenu />
-      <nav aria-label="Main navigation">
+      <nav aria-label="Main navigation" className="-mx-3 min-h-0 flex-1 overflow-y-auto px-3 pb-3">
         {primaryNav.map((entry) => (
           <UnavailableNavItem key={entry.label} {...entry} />
         ))}
         <Link
           className={cn(
             navItemLayout,
-            "bg-brand-soft text-11 font-semibold text-brand 2xl:text-12",
+            "bg-brand-soft px-2.25 text-11 font-semibold text-brand 2xl:text-12",
           )}
           href="/payments"
           aria-current="page"
@@ -148,13 +143,14 @@ function Sidebar() {
           <UnavailableNavItem key={entry.label} {...entry} />
         ))}
         <div className={navSectionStyles}>Products</div>
-        {products.map((entry) => (
-          <UnavailableNavItem key={entry.label} {...entry} expandable />
-        ))}
+        <ProductsNav />
       </nav>
-      <div className="mt-auto border-t border-line py-2">
+      <div className="border-t border-line py-2">
         <a
-          className={cn(navItemLayout, "text-10 font-medium text-[#586577] hover:bg-[#eef0f4]")}
+          className={cn(
+            navItemLayout,
+            "px-2.25 text-10 font-medium text-[#586577] hover:bg-nav-hover",
+          )}
           href="https://docs.stripe.com"
           target="_blank"
           rel="noreferrer"
