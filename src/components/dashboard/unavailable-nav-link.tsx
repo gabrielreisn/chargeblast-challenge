@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { Hint } from "@/features/payments/ui";
+import { Hint } from "@/components/ui/hint";
 
 export const UNAVAILABLE_HINT = "Not available in this demo";
 

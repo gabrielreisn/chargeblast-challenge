@@ -1,7 +1,7 @@
 "use client";
 import { X } from "lucide-react";
 import { getFilterChips } from "./filter-chips";
-import type { PaymentQuery } from "./query";
+import type { PaymentQuery } from "./url-state";
 import type { UpdateQuery } from "./filters";
 
 type ActiveFiltersProps = { query: PaymentQuery; update: UpdateQuery };

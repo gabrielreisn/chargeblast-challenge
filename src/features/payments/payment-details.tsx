@@ -1,9 +1,9 @@
-"use client";
+// Server Component: static markup. Only `CopyId` (a client component) is interactive.
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, Clock3, ExternalLink } from "lucide-react";
 import { CopyId, PaymentMethodCell, StatusBadge } from "./ui";
-import { formatAmount, formatDate, TIME_ZONE } from "./query";
+import { formatAmount, formatDate, TIME_ZONE } from "./format";
 import { snapshotSourceLabels, type Payment, type SnapshotSource } from "./model";
 
 const sectionStyles = "border-t border-line pt-5.5 pb-6.5";

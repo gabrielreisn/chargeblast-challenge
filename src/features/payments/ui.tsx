@@ -1,77 +1,10 @@
 "use client";
-import { useState, type ReactNode } from "react";
-import * as Tooltip from "@radix-ui/react-tooltip";
-import * as Popover from "@radix-ui/react-popover";
+import { useState } from "react";
 import { Check, Copy, CreditCard, Landmark, Wallet, X } from "lucide-react";
 import { toast } from "sonner";
-import { cn, floatingPanelStyles, iconButtonStyles } from "@/components/ui/styles";
+import { Hint } from "@/components/ui/hint";
+import { cn } from "@/components/ui/styles";
 import { statusLabels, type Payment, type PaymentStatus } from "./model";
-
-type HintProps = {
-  children: ReactNode;
-  text: string;
-  side?: Tooltip.TooltipContentProps["side"];
-};
-
-export function Hint({ children, text, side = "top" }: HintProps) {
-  return (
-    <Tooltip.Root>
-      <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
-      <Tooltip.Portal>
-        <Tooltip.Content
-          className="z-70 max-w-82.5 rounded-[5px] bg-ink px-2.5 py-1.75 text-11 leading-4 text-white shadow-tooltip"
-          side={side}
-          sideOffset={6}
-        >
-          {text}
-          {/* Radix places the arrow flush with the edge; overlapping 1px hides the subpixel seam. */}
-          <Tooltip.Arrow className="-mt-px fill-ink" width={12} height={6} />
-        </Tooltip.Content>
-      </Tooltip.Portal>
-    </Tooltip.Root>
-  );
-}
-
-type FilterPopoverProps = {
-  label: string;
-  icon?: ReactNode;
-  active?: boolean;
-  children: ReactNode;
-};
-
-export function FilterPopover({ label, icon, active = false, children }: FilterPopoverProps) {
-  return (
-    <Popover.Root>
-      <Popover.Trigger
-        className={cn(
-          "flex min-h-5.75 items-center gap-1.25 rounded-[5px] border px-1.75 py-0.75 text-10 whitespace-nowrap hover:bg-wash",
-          active
-            ? "border-brand-line bg-[#f8f6ff] text-brand"
-            : "border-[#dce0e7] bg-white text-[#687386] [&>svg]:text-[#7f8998]",
-        )}
-      >
-        {icon}
-        {label}
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          className={cn(floatingPanelStyles, "w-67.5 max-w-[calc(100vw-30px)]")}
-          sideOffset={7}
-          align="start"
-        >
-          <div className="flex items-center justify-between border-b border-[#e9ecf1] px-3.5 py-3 text-12 font-semibold">
-            {label}
-            <Popover.Close className={iconButtonStyles} aria-label="Close filter">
-              <X size={14} />
-            </Popover.Close>
-          </div>
-          {children}
-          <Popover.Arrow className="fill-white" />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
 
 const statusBadgeStyles: Record<PaymentStatus, string> = {
   succeeded: "border-success-line bg-success-bg text-success",

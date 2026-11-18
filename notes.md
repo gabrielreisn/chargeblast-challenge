@@ -1,70 +1,31 @@
 # Cleanup notes and CI proposals
 
-Findings from a project audit (Nov 18, 2026). Unused code was detected with
-[knip](https://knip.dev), plus manual checks for static assets and `@theme`
-tokens, which knip doesn't cover. Open items are listed first; completed work
-is at the end.
+Findings from a project audit (Nov 18, 2026), detected with
+[knip](https://knip.dev) plus manual checks. Open items are listed first;
+completed work is at the end.
 
-## Open: unused code and files
+## Open: dates
 
-| Item                                           | Where                                                                  | Suggestion                                                                                                                                                                                                  |
-| ---------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `requestJson`, `ApiError`, `toastRequestError` | `lib/api-client.ts`                                                    | No production caller yet; only tests use them. Keep only if client-side requests are planned soon, otherwise remove with their tests.                                                                       |
-| 5 starter SVGs                                 | `public/file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg` | Leftovers from `create-next-app`; delete.                                                                                                                                                                   |
-| `--text-25` token                              | `src/app/globals.css`                                                  | No longer referenced; delete.                                                                                                                                                                               |
-| `package-lock.json` ignore                     | `.oxfmtrc.json`                                                        | npm leftover since the pnpm migration; delete the entry.                                                                                                                                                    |
-| `allowJs: true`                                | `tsconfig.json`                                                        | No JavaScript sources remain; set to `false`. `target: "ES2017"` can also move to `ES2022` (Next transpiles anyway).                                                                                        |
-| `plan.md`                                      | repo root                                                              | Describes the original plan (importer, local snapshots, file layout, old tabs). Archive it under `docs/` with a "historical" note, or delete it now that README and `CLAUDE.md` describe the current state. |
-
-### Is `src/test/next-navigation.ts` used?
-
-Yes. It is the `next/navigation` test double for three suites
-(`payments-screen.test.tsx`, `topbar-search.test.tsx`,
-`transactions-header.test.tsx`) via
-`vi.mock("next/navigation", () => import("@/test/next-navigation"))`. It makes
-`useSearchParams`/`usePathname` re-render on `history.pushState`, which the
-URL-driven filters depend on. Keep it.
-
-## Open: readability and structure
-
-Ordered by value. All follow the "readability over performance" rule in `AGENTS.md`.
-
-1. **Move `Hint` (and `FilterPopover`) to `src/components/ui/`.** Shared UI in
-   `components/dashboard` currently imports from `features/payments/ui.tsx`,
-   which inverts the layering (`components` should not depend on `features`).
-2. **Move the `MoveColumn` type to `table-features.ts`.** `payment-table.tsx`
-   and `column-dnd.tsx` import each other today (type-only, but circular).
-3. **Split `features/payments/query.ts`** into URL state
-   (`parseQuery`/`serializeQuery`/`paymentsHref`), formatting
-   (`formatAmount`/`formatDate`/`relativeTime`), filtering and sorting
-   (`queryPayments`), and CSV export (`csvForPayments`).
-4. **Break up `payments-screen.tsx`** into `StatusTabs`, `TableToolbar` and
-   `DataNote` components so the screen reads as composition.
-5. **Make `payment-details.tsx` a Server Component.** Only `CopyId` needs the
-   client; the rest is static markup, so the `"use client"` directive can move
-   down to the interactive island.
-6. **Billing name holding an email.** Some legacy Stripe charges store the email
-   in `billing_details.name`, so the details card shows the email as the name
-   and "No email provided". Detect `name` values that look like emails and treat
-   them as the email.
-7. **Tailwind loader.** `next.config.ts` wires `@tailwindcss/turbopack`
-   through a custom Turbopack rule. Its dev cache once served a stale `@theme`
-   after a big `globals.css` change. Consider the standard
-   `@tailwindcss/postcss` setup unless the custom loader is needed.
+**Replacing `Date` (deferred).** Temporal is native in Node 26, Chrome 144+ and
+Firefox 139+, but not in stable Safari, and the date filters, tooltips and CSV
+export run in the browser. Options considered: Temporal with `temporal-polyfill`
+(~20 KB gzipped, dropped once Safari ships), Day.js with its utc/timezone/
+relativeTime plugins (~4–5 KB), or another small library. Current `Date` usage
+is limited to `format.ts`, `url-state.ts` (`isCalendarDate`), `csv.ts`,
+`columns.tsx`, `stripe-source.ts`, the payments page and the generator.
 
 ## Open: test gaps
 
-Coverage is 84% of lines overall, but these files are low (line coverage):
+Coverage is 88.6% of lines overall. Files still below 80% (line coverage):
 
 | File                                         | Lines | What to test                                                      |
 | -------------------------------------------- | ----- | ----------------------------------------------------------------- |
 | `components/dashboard/shell.tsx`             | 0%    | Account menu, notifications popover, nav current state.           |
-| `features/payments/payment-details.tsx`      | 0%    | Renders each source's notes, refunds row, customer fallbacks.     |
 | `components/feedback/loading-state.tsx`      | 0%    | Trivial; a render test or exclude it.                             |
 | `components/dashboard/route-transitions.tsx` | 40%   | Wrappers render children; tab key changes per segment.            |
 | `features/payments/column-dnd.tsx`           | 68%   | Keyboard reordering (needs mocked rects in jsdom) or an E2E test. |
-| `features/payments/payments-screen.tsx`      | 71%   | CSV export (success and failure toast), status tab counts.        |
 | `features/payments/filters.tsx`              | 72%   | Custom date range validation errors.                              |
+| `features/payments/data-note.tsx`            | 75%   | The live-Stripe source label.                                     |
 
 ## Open: CI proposals
 
@@ -76,70 +37,76 @@ Coverage is 84% of lines overall, but these files are low (line coverage):
 3. **License allow-list.** `dependency-review-action` can fail PRs that add
    dependencies under disallowed licenses (`allow-licenses`).
 4. **OpenSSF Scorecard** for a periodic supply-chain report.
-5. **Fixture data guard.** A small test asserting every fixture email ends in
-   `@example.com` and IDs look synthetic, so real customer data can't be
-   committed by accident.
-6. **CodeQL** (`github/codeql-action`, JavaScript/TypeScript) for security-focused
+5. **CodeQL** (`github/codeql-action`, JavaScript/TypeScript) for security-focused
    static analysis such as injection and unsafe URL handling.
-7. **End-to-end smoke tests.** Playwright against `pnpm build && pnpm start`
+6. **End-to-end smoke tests.** Playwright against `pnpm build && pnpm start`
    covering the drag-and-drop, filters and tab transitions that jsdom can't
    exercise, plus an axe accessibility scan per page.
-8. **Lighthouse CI or bundle-size budget.** Fail when performance or
+7. **Lighthouse CI or bundle-size budget.** Fail when performance or
    accessibility scores, or client JavaScript size, regress past a threshold.
+
+### Is `src/test/next-navigation.ts` used?
+
+Yes. It is the `next/navigation` test double for three suites
+(`payments-screen.test.tsx`, `topbar-search.test.tsx`,
+`transactions-header.test.tsx`). It makes `useSearchParams`/`usePathname`
+re-render on `history.pushState`, which the URL-driven filters depend on.
 
 ## Done
 
-### Data pipeline
+### Structure and readability (third pass)
 
-- **Removed the Stripe import pipeline.** `scripts/import-payments.ts`,
-  `scripts/import-stripe-payments.ts`, `pnpm stripe:import`, the
-  `data/stripe-payments.local.json` override and the `stripe-sandbox` snapshot
-  type are gone. There are exactly two sources: the fixture and live Stripe.
-  The fixture already uses the app's `Payment` schema; `normalize.ts` only
-  translates Stripe API objects into it.
-- **Rewrote the fixture generator** as `scripts/generate-payments.ts`. It
-  reproduces the committed fixture byte for byte (same checksum).
-- **`normalize.ts` without nested ternaries.** Status and method mapping are
-  named functions plus a `methodByStripeType` lookup table.
-- **Added the brief** as `docs/project-brief.pdf`.
+- **Shared primitives moved to `src/components/ui/`:** `Hint` (`hint.tsx`) and
+  `FilterPopover` (`filter-popover.tsx`). `components/` no longer imports from
+  `features/`.
+- **`MoveColumn` lives in `table-features.ts`**, removing the
+  `payment-table.tsx` ↔ `column-dnd.tsx` import cycle.
+- **`query.ts` split by concern:** `url-state.ts`, `format.ts`,
+  `query-payments.ts` and `csv.ts`, each with its own tests and named helpers.
+  Shared test data lives in `src/test/payments.ts`.
+- **`payments-screen.tsx` composes smaller pieces:** `StatusTabs`,
+  `TableToolbar` (filters, CSV export, column menu) and `DataNote`. It went
+  from 241 to 142 lines.
+- **`payment-details.tsx` is a Server Component**; only `CopyId` is client-side.
+- **Email-shaped billing names** are now treated as the customer's email in
+  `normalize.ts`, so legacy charges no longer show an address as the name.
+- **Standard Tailwind setup:** `@tailwindcss/postcss` via `postcss.config.mjs`
+  replaced the custom Turbopack loader rule.
+- **New tests:** payment details (was 0%), CSV export success and failure
+  toasts (toolbar was 19%), relative time, URL defaults. Coverage thresholds
+  raised to 88/81/82/88.
 
-### Lint and unused code
+### Unused code and files
 
-- **Stricter lint.** `.oxlintrc.json` enables `suspicious` plus
-  `react/rules-of-hooks` and `react/exhaustive-deps` (the obsolete
-  `react-in-jsx-scope` is off; the project uses the automatic JSX runtime).
-  It caught a real bug: after a rename, CSV export would have called the
-  browser's deprecated global `escape()` instead of the field escaper.
-  Other fixes: `sort()` → `toSorted()`, a shadowed variable, helpers moved to
-  module scope.
-- **knip in the project and CI** (`pnpm knip`). The five unused exports and one
-  unused type it reported are unexported.
+- Removed `src/lib/api-client.ts` (`requestJson`, `ApiError`,
+  `toastRequestError`) and its tests: nothing in the app used them. Restore
+  from commit `fd0268c` when the first client-side request is added.
+- Deleted the five `create-next-app` SVGs in `public/` and the `--text-25` token.
+- Dropped the `package-lock.json` ignore from `.oxfmtrc.json`.
+- `tsconfig.json`: `allowJs: false`, `target: "ES2022"`.
+- Archived `plan.md` as `docs/initial-plan.md` with a "historical" note.
+- The fixture data guard (every email ends in `@example.com`) already existed;
+  it now lives in `fixture.test.ts`.
 
-### CI and supply chain
+### Data pipeline (second pass)
 
-- **Runs once per PR.** `push` is limited to `main`.
-- **New jobs:** unused code (knip), dependency audit
-  (`pnpm audit --audit-level high`), dependency review on PRs (fails on
-  high-severity vulnerabilities), and a gitleaks secret scan over full history.
-- **Audit exception:** `GHSA-fc5q-39xc-vjpf` (picomatch ReDoS) is ignored in
-  `pnpm-workspace.yaml` with a justification. It is dev-only (`pnpm audit
-  --prod` is clean) and no patched version exists yet. Remove it once
-  picomatch ships a fix.
-- **`minimumReleaseAge`: 1 day.** Three days would fail today's lockfile
-  (oxlint 1.94 and oxfmt 0.79 were published on Nov 16). It can be raised once
-  dependencies age.
-- **Actions pinned to commit SHAs** with version comments, upgraded to current
-  majors (`pnpm/action-setup` v6, `gitleaks-action` v3: v2 stopped working when
-  GitHub removed Node 20 from runners). Shared setup lives in a composite
-  action (`.github/actions/setup`); Dependabot keeps the pins current.
-- **GitHub repository settings.** Secret scanning with push protection was
-  already enabled. The dependency graph (required by dependency review) and
-  Dependabot vulnerability alerts were turned on for PR #2.
-- **Pre-commit secret scan.** lefthook runs
-  `gitleaks git --pre-commit --staged` before lint and format (`protect` is
-  deprecated in gitleaks 8.19+). It fails with install instructions if gitleaks
-  is missing.
-- **Scan results:** full git history is clean. Locally, gitleaks flags only
-  git-ignored files: your Stripe key in `.env`, and Next.js's per-build preview
-  and encryption keys in `.next/`. The Stripe key does not appear in any build
-  output.
+- Removed the Stripe import pipeline; there are exactly two sources, the
+  fixture and live Stripe. The fixture already uses the app's `Payment` schema;
+  `normalize.ts` only translates Stripe API objects into it.
+- Rewrote the fixture generator as `scripts/generate-payments.ts`
+  (byte-identical output).
+- `normalize.ts` uses named functions and a lookup table instead of nested
+  ternaries.
+- Added the brief as `docs/project-brief.pdf`.
+
+### Lint, CI and supply chain (second pass)
+
+- oxlint `suspicious` plus React hooks rules; knip in the project and CI.
+- CI runs once per PR, with knip, dependency audit, dependency review and
+  gitleaks jobs. Actions are pinned to commit SHAs through a shared composite
+  setup action, kept current by Dependabot.
+- `minimumReleaseAge` of 1 day; one reviewed audit exception (picomatch,
+  dev-only, no patched release).
+- Pre-commit gitleaks scan of staged changes.
+- GitHub settings: secret scanning with push protection was already on; the
+  dependency graph and Dependabot alerts were enabled for PR #2.

@@ -30,6 +30,9 @@ export type PaymentTable = ReactTable<PaymentTableFeatures, Payment>;
 export type PaymentColumnDef = ColumnDef<PaymentTableFeatures, Payment>;
 export type PaymentHeader = Header<PaymentTableFeatures, Payment, unknown>;
 
+/** Moves a column to another column's position (see `reorderColumns`). */
+export type MoveColumn = (id: string, target: string) => void;
+
 /** Selection and row-action columns stay pinned to the edges and can't be reordered. */
 export const fixedColumnIds = ["select", "actions"];
 

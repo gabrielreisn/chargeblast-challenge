@@ -21,7 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import { cn } from "@/components/ui/styles";
-import type { MoveColumn } from "./payment-table";
+import type { MoveColumn } from "./table-features";
 
 type ColumnLabels = Record<string, string>;
 

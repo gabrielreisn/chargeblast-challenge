@@ -3,13 +3,15 @@ import { flexRender } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { buttonStyles, cn } from "@/components/ui/styles";
-import { defaultQuery, type PaymentQuery } from "./query";
+import { defaultQuery, type PaymentQuery } from "./url-state";
 import type { UpdateQuery } from "./filters";
 import { ColumnDndProvider, SortableCell, SortableHeaderCell } from "./column-dnd";
-import { fixedColumnIds, type PaymentHeader, type PaymentTable } from "./table-features";
-
-/** Moves a column to another column's position (see `reorderColumns`). */
-export type MoveColumn = (id: string, target: string) => void;
+import {
+  fixedColumnIds,
+  type MoveColumn,
+  type PaymentHeader,
+  type PaymentTable,
+} from "./table-features";
 
 const sortableColumns = ["created", "amount", "status"];
 /** Numeric columns: header and values align to the end so digits line up. */

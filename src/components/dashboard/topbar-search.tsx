@@ -2,7 +2,7 @@
 import type { FormEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PaymentSearch } from "@/features/payments/payment-search";
-import { defaultQuery, paymentsHref, parseQuery } from "@/features/payments/query";
+import { defaultQuery, paymentsHref, parseQuery } from "@/features/payments/url-state";
 
 /**
  * On the payments list the search filters in place; elsewhere Enter opens the

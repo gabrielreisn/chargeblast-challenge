@@ -2,7 +2,7 @@
 import { useState, type FormEvent } from "react";
 import { CalendarDays, CircleDollarSign, CreditCard, ListFilter, Plus } from "lucide-react";
 import { buttonStyles, cn, fieldStyles, noteStyles } from "@/components/ui/styles";
-import { FilterPopover } from "./ui";
+import { FilterPopover } from "@/components/ui/filter-popover";
 import {
   methods,
   methodLabels,
@@ -11,7 +11,7 @@ import {
   type PaymentMethod,
   type PaymentStatus,
 } from "./model";
-import { type PaymentQuery } from "./query";
+import type { PaymentQuery } from "./url-state";
 
 export type UpdateQuery = (patch: Partial<PaymentQuery>, replace?: boolean) => void;
 

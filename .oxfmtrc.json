@@ -1,11 +1,4 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": [
-    ".next/**",
-    "out/**",
-    "coverage/**",
-    "package-lock.json",
-    "next-env.d.ts",
-    "pnpm-lock.yaml"
-  ]
+  "ignorePatterns": [".next/**", "out/**", "coverage/**", "next-env.d.ts", "pnpm-lock.yaml"]
 }

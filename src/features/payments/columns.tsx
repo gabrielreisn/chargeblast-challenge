@@ -3,9 +3,10 @@ import { useMemo } from "react";
 import Link from "next/link";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { ArrowRight, Ellipsis } from "lucide-react";
-import { formatAmount, formatDate, relativeTime, TIME_ZONE } from "./query";
+import { formatAmount, formatDate, relativeTime, TIME_ZONE } from "./format";
 import { cn, menuItemStyles, menuStyles, rowIconButtonStyles } from "@/components/ui/styles";
-import { CopyId, Hint, PaymentMethodCell, StatusBadge } from "./ui";
+import { Hint } from "@/components/ui/hint";
+import { CopyId, PaymentMethodCell, StatusBadge } from "./ui";
 import type { PaymentColumnDef } from "./table-features";
 export function usePaymentColumns(now: number) {
   return useMemo<PaymentColumnDef[]>(

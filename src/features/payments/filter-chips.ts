@@ -1,5 +1,5 @@
 import { statusLabels, methodLabels } from "./model";
-import type { PaymentQuery } from "./query";
+import type { PaymentQuery } from "./url-state";
 
 export type FilterChip = { key: string; label: string; reset: Partial<PaymentQuery> };
 
