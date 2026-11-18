@@ -38,7 +38,8 @@ const customerNames = [
   "Charlotte Brown",
 ];
 
-// Repeated entries weight the mix: mostly USD, mostly successful payments.
+// Repeated entries weight the mix: mostly USD, mostly successful payments. Uncaptured is
+// left out on purpose so the dashboard's empty status view has a real case to show.
 const currencyCycle = ["usd", "usd", "usd", "eur", "gbp", "brl", "jpy"];
 const statusCycle: Payment["status"][] = [
   "succeeded",
@@ -46,8 +47,16 @@ const statusCycle: Payment["status"][] = [
   "succeeded",
   "succeeded",
   "failed",
-  "pending",
+  "succeeded",
   "refunded",
+  "succeeded",
+  "pending",
+  "succeeded",
+  "disputed",
+  "succeeded",
+  "blocked",
+  "incomplete",
+  "canceled",
 ];
 const cardBrands = ["visa", "mastercard", "amex"];
 const descriptions = [
@@ -57,11 +66,16 @@ const descriptions = [
   "Subscription creation",
 ];
 
-/** The Stripe status each simplified status is derived from (see normalize.ts). */
+/** The Stripe status each dashboard status is derived from (see normalize.ts). */
 const sourceStatusByStatus: Record<Payment["status"], string> = {
   succeeded: "succeeded",
   refunded: "succeeded",
+  disputed: "succeeded",
   failed: "requires_payment_method",
+  uncaptured: "requires_capture",
+  blocked: "requires_payment_method",
+  incomplete: "requires_action",
+  canceled: "canceled",
   pending: "processing",
 };
 

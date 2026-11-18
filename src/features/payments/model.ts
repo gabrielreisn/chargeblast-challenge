@@ -1,12 +1,28 @@
 import { z } from "zod";
 
-export const statuses = ["succeeded", "pending", "failed", "refunded"] as const;
+/** Stripe's payment statuses, in the order its Payments page lists them. */
+export const statuses = [
+  "succeeded",
+  "refunded",
+  "disputed",
+  "failed",
+  "uncaptured",
+  "blocked",
+  "incomplete",
+  "canceled",
+  "pending",
+] as const;
 export const methods = ["card", "ach", "wallet", "other"] as const;
 export const statusLabels = {
   succeeded: "Succeeded",
-  pending: "Pending",
-  failed: "Failed",
   refunded: "Refunded",
+  disputed: "Disputed",
+  failed: "Failed",
+  uncaptured: "Uncaptured",
+  blocked: "Blocked",
+  incomplete: "Incomplete",
+  canceled: "Canceled",
+  pending: "Pending",
 };
 export const methodLabels = { card: "Card", ach: "ACH", wallet: "Wallet", other: "Other" };
 export const paymentSchema = z.object({

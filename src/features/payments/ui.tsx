@@ -1,34 +1,50 @@
 "use client";
 import { useState } from "react";
-import { Check, Copy, CreditCard, Landmark, Wallet, X } from "lucide-react";
+import {
+  Ban,
+  Check,
+  CircleAlert,
+  Clock3,
+  Copy,
+  CreditCard,
+  Landmark,
+  Wallet,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Hint } from "@/components/ui/hint";
 import { cn } from "@/components/ui/styles";
 import { statusLabels, type Payment, type PaymentStatus } from "./model";
 
-const statusBadgeStyles: Record<PaymentStatus, string> = {
-  succeeded: "border-success-line bg-success-bg text-success",
-  failed: "border-danger-line bg-danger-bg text-danger",
-  pending: "border-warning-line bg-warning-bg text-warning",
-  refunded: "border-info-line bg-info-bg text-info",
+const neutralBadge = "border-line bg-field text-subtle";
+
+/** Colors and trailing icon per status, following Stripe's badges. */
+const statusBadges: Record<PaymentStatus, { styles: string; icon?: LucideIcon }> = {
+  succeeded: { styles: "border-success-line bg-success-bg text-success", icon: Check },
+  refunded: { styles: "border-info-line bg-info-bg text-info" },
+  disputed: { styles: "border-warning-line bg-warning-bg text-warning", icon: CircleAlert },
+  failed: { styles: "border-danger-line bg-danger-bg text-danger", icon: X },
+  uncaptured: { styles: neutralBadge, icon: Clock3 },
+  blocked: { styles: "border-danger-line bg-danger-bg text-danger", icon: Ban },
+  incomplete: { styles: neutralBadge, icon: Clock3 },
+  canceled: { styles: neutralBadge, icon: X },
+  pending: { styles: "border-warning-line bg-warning-bg text-warning", icon: Clock3 },
 };
 
 type StatusBadgeProps = { status: PaymentStatus };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
+  const { styles, icon: Icon } = statusBadges[status];
   return (
     <span
       className={cn(
         "inline-flex items-center justify-between gap-1.25 rounded-[3px] border px-1.25 align-middle text-9 leading-4 font-medium",
-        statusBadgeStyles[status],
+        styles,
       )}
     >
       {statusLabels[status]}
-      {status === "succeeded" ? (
-        <Check size={10} strokeWidth={3} aria-hidden="true" />
-      ) : status === "failed" ? (
-        <X size={10} strokeWidth={3} aria-hidden="true" />
-      ) : null}
+      {Icon && <Icon size={10} strokeWidth={2.75} aria-hidden="true" />}
     </span>
   );
 }

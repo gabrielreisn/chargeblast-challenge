@@ -19,12 +19,13 @@ import { FormattersProvider } from "./format-context";
 import type { Snapshot } from "./model";
 import { PaymentTable } from "./payment-table";
 import { queryPayments } from "./query-payments";
-import { StatusTabs } from "./status-tabs";
+import { StatusEmptyState } from "./status-empty-state";
+import { countByStatus, selectedStatusTab, StatusTabs } from "./status-tabs";
 import { TableFooter } from "./table-footer";
 import { paymentTableFeatures, reorderColumns, type MoveColumn } from "./table-features";
 import { TableToolbar } from "./table-toolbar";
 import { TimeZoneSync } from "./time-zone-sync";
-import { paymentsHref, parseQuery } from "./url-state";
+import { defaultQuery, paymentsHref, parseQuery } from "./url-state";
 
 const initialColumnOrder: ColumnOrderState = [
   "select",
@@ -86,6 +87,10 @@ export function PaymentsScreen({ snapshot, now, formatSettings }: PaymentsScreen
     () => filtered.slice((page - 1) * query.size, page * query.size),
     [filtered, page, query.size],
   );
+  const statusCounts = useMemo(() => countByStatus(snapshot.payments), [snapshot.payments]);
+  const selectedStatus = selectedStatusTab(query);
+  // A status with no payments at all gets Stripe's dedicated empty view instead of the table.
+  const emptyStatus = selectedStatus && statusCounts[selectedStatus] === 0 ? selectedStatus : null;
   const currencies = useMemo(
     () => [...new Set(snapshot.payments.map((payment) => payment.currency))].toSorted(),
     [snapshot.payments],
@@ -135,7 +140,12 @@ export function PaymentsScreen({ snapshot, now, formatSettings }: PaymentsScreen
         <span className="mr-1.75 font-semibold text-[#40495b]">New</span> Rule Attributes are now in
         Sigma and Data Pipeline for better fraud insights.
       </Banner>
-      <StatusTabs payments={snapshot.payments} query={query} update={update} />
+      <StatusTabs
+        total={snapshot.payments.length}
+        counts={statusCounts}
+        query={query}
+        update={update}
+      />
       <TableToolbar
         query={query}
         update={update}
@@ -146,15 +156,21 @@ export function PaymentsScreen({ snapshot, now, formatSettings }: PaymentsScreen
       />
       <ActiveFilters query={query} update={update} />
       <output className="sr-only">{filtered.length} matching payments.</output>
-      <PaymentTable table={table} query={query} update={update} moveColumn={moveColumn} />
-      <TableFooter
-        count={filtered.length}
-        selected={table.getSelectedRowModel().rows.length}
-        page={page}
-        pages={pages}
-        query={query}
-        update={update}
-      />
+      {emptyStatus ? (
+        <StatusEmptyState status={emptyStatus} onClear={() => update(defaultQuery)} />
+      ) : (
+        <>
+          <PaymentTable table={table} query={query} update={update} moveColumn={moveColumn} />
+          <TableFooter
+            count={filtered.length}
+            selected={table.getSelectedRowModel().rows.length}
+            page={page}
+            pages={pages}
+            query={query}
+            update={update}
+          />
+        </>
+      )}
       <DataNote snapshot={snapshot} now={now} />
     </FormattersProvider>
   );

@@ -31,12 +31,30 @@ describe("sandbox normalization", () => {
   test.each([
     ["succeeded", null, "succeeded"],
     ["processing", null, "pending"],
-    ["requires_capture", null, "pending"],
-    ["requires_payment_method", null, "pending"],
+    ["requires_capture", null, "uncaptured"],
+    ["requires_payment_method", null, "incomplete"],
+    ["requires_action", null, "incomplete"],
+    ["requires_confirmation", null, "incomplete"],
     ["requires_payment_method", { code: "card_declined" }, "failed"],
-    ["canceled", null, "failed"],
+    ["canceled", null, "canceled"],
   ])("maps %s with %s to %s", (status, last_payment_error, expected) => {
     expect(normalizePayment(pi({ status, last_payment_error })).status).toBe(expected);
+  });
+  test("maps Radar blocks, disputes and refunds from the latest charge", () => {
+    const declined = {
+      status: "requires_payment_method",
+      last_payment_error: { code: "card_declined" },
+    };
+    const blockedCharge = { ...charge({ status: "failed" }), outcome: { type: "blocked" } };
+    expect(normalizePayment(pi({ ...declined, latest_charge: blockedCharge })).status).toBe(
+      "blocked",
+    );
+    const disputed = { ...charge({ amount_refunded: 500 }), disputed: true };
+    // A dispute outranks the refund on the same charge.
+    expect(normalizePayment(pi({ latest_charge: disputed })).status).toBe("disputed");
+    expect(normalizePayment(pi({ latest_charge: charge({ amount_refunded: 500 }) })).status).toBe(
+      "refunded",
+    );
   });
   test("maps partial refunds, wallet-backed cards, and customer fallback", () => {
     const normalized = normalizePayment(
@@ -109,8 +127,10 @@ describe("legacy charge normalization", () => {
     [{ status: "succeeded" }, "succeeded", "succeeded"],
     [{ status: "failed" }, "failed", "failed"],
     [{ status: "pending" }, "pending", "pending"],
-    [{ status: "succeeded", captured: false }, "pending", "uncaptured"],
+    [{ status: "succeeded", captured: false }, "uncaptured", "uncaptured"],
     [{ status: "succeeded", amount_refunded: 500 }, "refunded", "succeeded"],
+    [{ status: "succeeded", disputed: true }, "disputed", "succeeded"],
+    [{ status: "failed", outcome: { type: "blocked" } }, "blocked", "failed"],
   ])("maps %o to %s", (patch, status, sourceStatus) => {
     expect(normalizeCharge(charge(patch))).toMatchObject({ status, sourceStatus });
   });
