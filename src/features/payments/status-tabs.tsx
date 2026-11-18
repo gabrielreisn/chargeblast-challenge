@@ -45,11 +45,11 @@ export function StatusTabs({ payments, query, update }: StatusTabsProps) {
           key={tab.label}
           type="button"
           aria-pressed={isTabSelected(tab, query)}
-          className="group flex min-h-9 flex-1 items-center justify-between rounded-[5px] border border-[#e0e4eb] bg-white p-2 text-left text-10 text-muted hover:border-[#b9b2fb] aria-pressed:border-[#8174ff] aria-pressed:text-brand aria-pressed:shadow-[0_0_0_1px_#8174ff0a] max-md:min-w-25 md:text-11 lg:px-2.75 lg:py-2.25"
+          className="group flex min-h-10 flex-1 items-center justify-between rounded-md border border-line-strong bg-white px-2.5 py-2 text-left text-11 font-medium text-subtle hover:border-brand-line aria-pressed:border-brand aria-pressed:font-semibold aria-pressed:text-brand aria-pressed:shadow-[0_0_0_1px_var(--color-brand)] max-md:min-w-25 md:text-12 lg:px-3"
           onClick={() => update({ statuses: tab.status ? [tab.status] : [] })}
         >
           <span>{tab.label}</span>
-          <span className="text-10 text-[#9097a6] tabular-nums group-aria-pressed:text-[#8f84ed]">
+          <span className="text-10 font-normal text-ghost tabular-nums group-aria-pressed:text-brand-focus">
             {counts[tab.status]}
           </span>
         </button>

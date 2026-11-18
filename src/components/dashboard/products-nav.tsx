@@ -13,7 +13,7 @@ import {
 import { cn, navItemHover, navItemLayout, navItemText } from "@/components/ui/styles";
 import { UnavailableNavLink } from "./unavailable-nav-link";
 
-type ProductLink = { label: string; preview?: boolean };
+export type ProductLink = { label: string; preview?: boolean };
 type Product = { icon: LucideIcon; label: string; links: ProductLink[] };
 
 export const products: Product[] = [

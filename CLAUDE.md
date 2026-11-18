@@ -26,10 +26,11 @@ Before finishing any change, run and pass: `pnpm lint`, `pnpm format:check` (fix
 
 ## Metadata and SEO
 
-- All metadata comes from `src/lib/seo.ts`. Pages export `metadata = routeMetadata("<key>")` or `privateMetadata("<title>")`; never hand-write a `Metadata` object in a route file.
-- A new public page needs an entry in `routes` in `seo.ts`, which also adds it to `sitemap.xml`. Record-detail and error pages use `privateMetadata` (noindex) and stay out of the sitemap.
+- All metadata comes from `src/lib/seo.ts`. Pages export `metadata = routeMetadata("<segment>")` or `privateMetadata("<title>")`; never hand-write a `Metadata` object in a route file.
+- The public pages are the Transactions tabs in `transactionRoutes` (`src/lib/transaction-routes.ts`). That list drives the tab bar, each page's title and description, and `sitemap.xml`, so a new tab is one entry there. Record-detail and error pages use `privateMetadata` (noindex, no canonical) and stay out of the sitemap.
+- Don't add per-route URLs, Open Graph or Twitter fields. `rootMetadata` resolves canonical and `og:url` from each page's pathname (`"./"`), Next copies the page title and description into the social tags, and `app/opengraph-image.tsx` supplies the image.
 - `app/robots.ts`, `app/sitemap.ts` and `app/manifest.ts` only re-export helpers from `seo.ts`. The site origin comes from `NEXT_PUBLIC_SITE_URL`, then Vercel's production URL.
-- Next merges metadata shallowly: when overriding `openGraph` or `twitter`, spread the shared defaults as `routeMetadata` does.
+- Next merges metadata shallowly: a page that sets `openGraph` or `twitter` replaces the shared defaults, so spread them if one ever must.
 
 ## TypeScript
 
@@ -67,6 +68,12 @@ Before finishing any change, run and pass: `pnpm lint`, `pnpm format:check` (fix
 - `remote` uses `src/features/payments/stripe-source.ts`: sandbox keys only, live objects rejected, server-side only, cached with `"use cache"` + `cacheLife("minutes")`. Never pass the secret key as a cached function argument or expose it through a `NEXT_PUBLIC_` variable.
 - `scripts/generate-payments.ts` runs directly in Node, so it and what it imports (`model.ts`) use relative imports with `.ts` extensions and no `@/` alias. Keep `model.ts` free of app imports. The generator must stay deterministic: verify a regeneration with the fixture's `importedAt` produces an identical file.
 
+## Locale and time zone
+
+- Never hardcode a locale or time zone, and never call `toLocaleString()` without one. Pages read `getFormatSettings()` (`src/lib/format-settings.ts`: `Accept-Language`, then the `tz` cookie, Vercel's `x-vercel-ip-timezone` or Cloudflare's `cf-timezone`) and pass the settings down. Client components use `useFormatters()`; server components call `formattersFor(settings)`.
+- `TimeZoneSync` stores the browser's time zone in the `tz` cookie and refreshes once when the server rendered in another zone. Render it on every page that shows dates.
+- Filtering, sorting and CSV stay locale-independent: `majorAmount()`, ISO dates and raw codes.
+
 ## Feedback and errors
 
 - Rendering and data-loading failures are handled by route boundaries: `app/(dashboard)/(transactions)/error.tsx` (tabs stay usable), `app/(dashboard)/error.tsx`, and `app/global-error.tsx`. They render `ErrorState` and receive `{ error, retry }`.
@@ -75,9 +82,9 @@ Before finishing any change, run and pass: `pnpm lint`, `pnpm format:check` (fix
 
 ## Structure
 
-- `src/app/(dashboard)/layout.tsx` renders the shell (sidebar, top bar, providers) once. `(transactions)/layout.tsx` adds the Transactions header and tabs; tab metadata lives in `transactionTabs` in `transactions-header.tsx`.
+- `src/app/(dashboard)/layout.tsx` renders the shell (sidebar, top bar, providers) once. `(transactions)/layout.tsx` adds the Transactions header and tabs; tab metadata lives in `transactionRoutes` in `src/lib/transaction-routes.ts`.
 - Feature code lives in `src/features/<feature>/`, shared UI in `src/components/`, and server-only data access in `src/lib/`. `components/` never imports from `features/`; generic primitives (`Hint`, `FilterPopover`, style recipes) live in `src/components/ui/`.
-- Payments logic is split by concern: `url-state.ts` (parse/serialize the URL query, `paymentsHref`), `format.ts` (amounts, dates, relative time), `query-payments.ts` (filtering and sorting), `csv.ts` (export). Screen pieces are small components (`status-tabs.tsx`, `table-toolbar.tsx`, `data-note.tsx`) composed by `payments-screen.tsx`.
+- Payments logic is split by concern: `url-state.ts` (parse/serialize the URL query, `paymentsHref`), `format.ts` (amounts, dates, relative time, bound to the viewer's locale and time zone via `formattersFor()`), `query-payments.ts` (filtering and sorting), `csv.ts` (export). Screen pieces are small components (`status-tabs.tsx`, `table-toolbar.tsx`, `data-note.tsx`) composed by `payments-screen.tsx`.
 - Prefer Server Components; put `"use client"` on the smallest interactive piece (for example `payment-details.tsx` is a Server Component that renders the client `CopyId`).
 - Tests sit next to the code as `*.test.ts(x)`; shared payment test data comes from `src/test/payments.ts` (`buildPayment`, `testNow`). Mock `next/navigation` with `vi.mock("next/navigation", () => import("@/test/next-navigation"))`, which re-renders on history changes like the App Router does.
 - This is a read-only demo: never add actions that move money. Reference-only controls use `ReadOnlyButton`.

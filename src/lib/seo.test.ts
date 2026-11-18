@@ -1,9 +1,10 @@
 import { afterEach, expect, test, vi } from "vitest";
+import { transactionRoutes } from "./transaction-routes";
 import {
   privateMetadata,
   robotsRules,
+  rootMetadata,
   routeMetadata,
-  routes,
   sitemapEntries,
   siteUrl,
   webManifest,
@@ -19,10 +20,10 @@ test("resolves the site origin from the explicit URL, then Vercel's production d
   expect(siteUrl().origin).toBe("https://demo.example.com");
 });
 
-test("lists every public route in the sitemap with absolute URLs", () => {
+test("lists every transactions tab in the sitemap with absolute URLs", () => {
   vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://demo.example.com");
   expect(sitemapEntries().map((entry) => entry.url)).toEqual(
-    Object.values(routes).map((route) => `https://demo.example.com${route.path}`),
+    transactionRoutes.map((route) => `https://demo.example.com/${route.segment}`),
   );
 });
 
@@ -34,26 +35,27 @@ test("robots allows crawling and points at the sitemap", () => {
   });
 });
 
-test("route metadata sets a canonical URL and keeps the shared social defaults", () => {
-  const metadata = routeMetadata("payouts");
-  expect(metadata).toMatchObject({
-    title: "Payouts",
-    alternates: { canonical: "/payouts" },
-    openGraph: { siteName: "cramly.ai", type: "website", url: "/payouts" },
-    twitter: { card: "summary_large_image" },
+test("route metadata only sets the tab's title and description", () => {
+  expect(routeMetadata("standalone-3ds")).toEqual({
+    title: "Standalone 3DS",
+    description: "Review 3D Secure authentications run outside of a payment.",
   });
 });
 
+test("shared defaults resolve canonical and og:url per page and leave titles to each page", () => {
+  expect(rootMetadata.alternates).toEqual({ canonical: "./" });
+  expect(rootMetadata.openGraph).toMatchObject({ url: "./", siteName: "cramly.ai" });
+  // A shared og:title would override the page title Next copies in, so there must be none.
+  expect(rootMetadata.openGraph).not.toHaveProperty("title");
+  expect(rootMetadata.twitter).not.toHaveProperty("title");
+});
+
 test("private pages are excluded from search indexing", () => {
-  expect(privateMetadata("Payment details").robots).toEqual({ index: false, follow: false });
+  const metadata = privateMetadata("Payment details");
+  expect(metadata.robots).toEqual({ index: false, follow: false });
+  expect(metadata.alternates).toEqual({ canonical: null });
 });
 
 test("the web manifest starts on the payments list", () => {
   expect(webManifest()).toMatchObject({ start_url: "/payments", display: "standalone" });
-});
-
-test("public routes keep the shared Open Graph image when they override openGraph", () => {
-  const metadata = routeMetadata("payments");
-  expect(metadata.openGraph).toMatchObject({ images: [{ url: "/opengraph-image" }] });
-  expect(metadata.twitter).toMatchObject({ images: [{ url: "/opengraph-image" }] });
 });

@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, Clock3, ExternalLink } from "lucide-react";
 import { CopyId, PaymentMethodCell, StatusBadge } from "./ui";
-import { formatAmount, formatDate, TIME_ZONE } from "./format";
+import { formattersFor, type FormatSettings } from "./format";
+import { TimeZoneSync } from "./time-zone-sync";
 import { snapshotSourceLabels, type Payment, type SnapshotSource } from "./model";
 
 const sectionStyles = "border-t border-line pt-5.5 pb-6.5";
@@ -28,7 +29,11 @@ function TimelineItem({ icon, title, detail }: TimelineItemProps) {
   );
 }
 
-type PaymentDetailsProps = { payment: Payment; source: SnapshotSource };
+type PaymentDetailsProps = {
+  payment: Payment;
+  source: SnapshotSource;
+  formatSettings: FormatSettings;
+};
 
 const activityNotes: Record<SnapshotSource, string> = {
   synthetic:
@@ -37,11 +42,13 @@ const activityNotes: Record<SnapshotSource, string> = {
     "Current state from Stripe. Fetch Stripe Events separately for a complete event timeline.",
 };
 
-export function PaymentDetails({ payment: p, source }: PaymentDetailsProps) {
+export function PaymentDetails({ payment: p, source, formatSettings }: PaymentDetailsProps) {
+  const { formatAmount, formatDate, timeZone } = formattersFor(formatSettings);
   const amount = formatAmount(p.amount, p.currency);
   const currency = p.currency.toUpperCase();
   return (
     <div className="mx-auto mt-3.75 mb-10 max-w-300">
+      <TimeZoneSync renderedTimeZone={timeZone} />
       <Link className="mb-7 inline-flex items-center gap-1.5 text-12 text-brand" href="/payments">
         <ArrowLeft size={14} aria-hidden="true" />
         Payments
@@ -75,7 +82,7 @@ export function PaymentDetails({ payment: p, source }: PaymentDetailsProps) {
               </dd>
               <dt>Created</dt>
               <dd>
-                {formatDate(p.created)} <span className="text-muted">({TIME_ZONE})</span>
+                {formatDate(p.created)} <span className="text-muted">({timeZone})</span>
               </dd>
               <dt>Description</dt>
               <dd>{p.description ?? "No description"}</dd>
