@@ -69,6 +69,32 @@ function createFormatters({ locale, timeZone }: FormatSettings) {
     day: "numeric",
     year: "numeric",
   });
+  const fullDateTimeFormatter = new Intl.DateTimeFormat(locale, {
+    timeZone,
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const timeFormatter = new Intl.DateTimeFormat(locale, {
+    timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const dayYearFormatter = new Intl.DateTimeFormat(locale, {
+    timeZone,
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+  const regionNames = new Intl.DisplayNames(locale, { type: "region" });
+  // Card expiry is a calendar month, not a moment, so it is formatted in UTC.
+  const expiryFormatter = new Intl.DateTimeFormat(locale, {
+    timeZone: "UTC",
+    month: "short",
+    year: "numeric",
+  });
   const numberFormatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 3 });
   const zoneNameFormatter = new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: "long" });
   const zoneOffsetFormatter = new Intl.DateTimeFormat(locale, {
@@ -94,6 +120,37 @@ function createFormatters({ locale, timeZone }: FormatSettings) {
     /** Unix seconds → "Nov 18, 2:05 PM" (in the viewer's locale and time zone). */
     formatDate(timestamp: number) {
       return dateTimeFormatter.format(new Date(timestamp * 1000));
+    },
+    /** Unix seconds → "Oct 17, 2022, 5:24 PM", for records that may be years old. */
+    formatFullDate(timestamp: number) {
+      return fullDateTimeFormatter.format(new Date(timestamp * 1000));
+    },
+    /** Unix seconds → "5:24 PM". */
+    formatTime(timestamp: number) {
+      return timeFormatter.format(new Date(timestamp * 1000));
+    },
+    /** Unix seconds → "Oct 17, 2022". */
+    formatDay(timestamp: number) {
+      return dayYearFormatter.format(new Date(timestamp * 1000));
+    },
+    /** The zone's UTC offset at `timestamp`, as Stripe writes it: "-03", "+05:30", "+00". */
+    offsetLabel(timestamp: number) {
+      const name =
+        zoneOffsetFormatter
+          .formatToParts(new Date(timestamp * 1000))
+          .find((part) => part.type === "timeZoneName")?.value ?? "";
+      const match = /GMT([+-])(\d{1,2})(?::(\d{2}))?/.exec(name);
+      if (!match) return "UTC";
+      const [, sign, hours, minutes] = match;
+      return `${sign}${hours.padStart(2, "0")}${minutes ? `:${minutes}` : ""}`;
+    },
+    /** Card expiry month and year → "Dec 2032". */
+    formatExpiry(month: number, year: number) {
+      return expiryFormatter.format(Date.UTC(year, month - 1, 1));
+    },
+    /** ISO country code → "United States", in the viewer's language. */
+    regionName(code: string) {
+      return regionNames.of(code) ?? code;
     },
     /** YYYY-MM-DD → "Nov 18, 2026". */
     formatCalendarDate(isoDate: string) {

@@ -34,6 +34,19 @@ test("names the time zone with its offset at a given moment", () => {
   );
 });
 
+test("formats full dates, times, offsets, expiry and countries for the details page", () => {
+  expect(testFormatters.formatFullDate(testNow)).toBe("Nov 17, 2026, 11:00 PM");
+  expect(testFormatters.formatTime(testNow)).toBe("11:00 PM");
+  expect(testFormatters.formatDay(testNow)).toBe("Nov 17, 2026");
+  expect(testFormatters.offsetLabel(testNow)).toBe("-03");
+  expect(formattersFor({ locale: "en-US", timeZone: "Asia/Kolkata" }).offsetLabel(testNow)).toBe(
+    "+05:30",
+  );
+  expect(formattersFor({ locale: "en-US", timeZone: "UTC" }).offsetLabel(testNow)).toBe("+00");
+  expect(testFormatters.formatExpiry(12, 2032)).toBe("Dec 2032");
+  expect(testFormatters.regionName("JP")).toBe("Japan");
+});
+
 test("reuses one set of formatters per locale and time zone", () => {
   expect(formattersFor({ locale: "en-US", timeZone: "America/Sao_Paulo" })).toBe(testFormatters);
 });
