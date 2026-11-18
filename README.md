@@ -1,36 +1,58 @@
-# Chargeblast Challenge
+# Chargeblast · Payments
 
-Next.js App Router starter with TypeScript, Tailwind CSS, Oxlint, Oxfmt, and Vitest with React Testing Library.
+A recreation of the Stripe Dashboard Payments screen using Next.js, TypeScript, Tailwind CSS, TanStack Table, and accessible Radix primitives. Includes 500 synthetic payments across five currencies, four statuses, cards, wallets, and ACH.
 
-## Development
+## Run locally
 
-Use Node.js 24 (`nvm use`), then:
+Use Node.js 24 and pnpm 12.6.0 (pinned in `package.json`):
 
 ```sh
-npm ci
-npm run dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-Open http://localhost:3000. The home page lives in `src/app/page.tsx`.
+Open the local URL printed by Next.js, then `/payments`.
 
-## Commands
+## Features
 
-| Command                | Purpose                                                             |
-| ---------------------- | ------------------------------------------------------------------- |
-| `npm run lint`         | Lint with Oxlint, including React, Next.js, and accessibility rules |
-| `npm run lint:fix`     | Apply available lint fixes                                          |
-| `npm run format`       | Format with Oxfmt                                                   |
-| `npm run format:check` | Check formatting                                                    |
-| `npm run typecheck`    | Generate Next.js route types and check TypeScript                   |
-| `npm test`             | Run Vitest once                                                     |
-| `npm run test:watch`   | Run Vitest in watch mode                                            |
-| `npm run build`        | Build for production                                                |
-| `npm start`            | Serve the production build                                          |
+- Search payment IDs, emails, or card/bank last four digits.
+- Filter by date (Today, 7/30 days, custom), multiple statuses/payment methods, currency, and inclusive amount range.
+- Sort by date, amount, or status; paginate with 25, 50, or 100 rows.
+- Copy full payment IDs; focus/hover dates for relative-time tooltips.
+- Filters, sorting, and pagination persist in the URL and support browser history.
+- Account menus, payment details routes, column resizing/reordering (drag or keyboard controls), and filtered CSV export.
+- Responsive dashboard with horizontal table scrolling on small screens.
 
-Tests are colocated as `src/**/*.test.ts` or `src/**/*.test.tsx`. Vitest uses jsdom, the `@/*` alias, and jest-dom matchers. Async Server Components need integration or end-to-end tests.
+Dates use `America/Sao_Paulo`. Money stays in integer minor units and respects each currency's decimal precision. Mixed-currency sorting/filtering compares nominal displayed amounts; select a currency for like-for-like comparisons. CSV exports all filtered/sorted results across pages, with quoting and formula neutralization.
 
-GitHub Actions runs separate lint/format, typecheck, and unit test jobs on pushes and pull requests. The lockfile is committed for reproducible installs.
+## Data
+
+The deployed application uses `data/payments.fixture.json`, containing fictional customers at `example.com`. Regenerate it with `pnpm data:generate`, optionally with a fixed ISO timestamp:
+
+```sh
+pnpm data:generate 2026-11-18T00:00:00Z
+```
+
+The local-only Stripe SDK importer is available as `pnpm stripe:import`. It uses the existing `STRIPE_SECRET_KEY` from the environment or `.env.local`, accepts sandbox test secret/restricted keys only, and refuses live objects. It uses SDK auto-pagination with retries, caps the import at 1,000 records, and atomically replaces `data/stripe-payments.local.json` after validation. The importer is explicit; development, builds, tests, and CI never call Stripe. No publishable key or webhook is needed. Integration alignment can be done separately.
+
+In development, an existing local snapshot takes precedence over the fixture. Both `.env.local` and the local JSON are ignored by Git. Production always uses the committed synthetic fixture. Importing fewer than 300 payments does not duplicate or invent Stripe records.
+
+The four UI status categories deliberately simplify Stripe's source statuses. Refunds take precedence; canceled payments and failed payment-method attempts display Failed; other open PaymentIntents display Pending. The original source status remains visible on the detail page. Activity shows only known timestamps, and custom Stripe metadata is not exported.
+
+## Checks
+
+```sh
+pnpm lint
+pnpm format:check
+pnpm typecheck
+pnpm test:unit
+pnpm build
+```
+
+GitHub Actions runs separate lint/format, typecheck, and unit-test jobs with frozen pnpm installs. Tests cover query combinations, timezone boundaries, currency precision, status normalization, safe import persistence, sorting, pagination, and clipboard behavior. Use `pnpm test:watch` during development.
 
 ## Deployment
 
-Import this repository as a new Next.js project in Vercel with Node.js 24. Default build settings work; no environment variables are required. Project credentials and `.vercel/` stay outside version control.
+[Production](https://chargeblast-challenge-starter.vercel.app/payments) · [GitHub](https://github.com/gabrielreisn/chargeblast-challenge)
+
+Vercel detects Next.js and pnpm from the repository. No Stripe runtime key is needed. The dashboard is a read-only demo; create-payment and unrelated navigation are reference elements rather than money-moving operations. See `plan.md` for the original requirement mapping and delivery checklist.
