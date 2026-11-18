@@ -1,0 +1,14 @@
+# Git hooks, installed by `pnpm install` (the `prepare` script runs `lefthook install`).
+# Docs: https://lefthook.dev
+pre-commit:
+  # Run jobs in order and stop at the first failure: lint fixes first, then format the result.
+  piped: true
+  jobs:
+    - name: lint
+      glob: "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
+      run: pnpm exec oxlint --fix --deny-warnings {staged_files}
+      stage_fixed: true
+    - name: format
+      glob: "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,json,jsonc,md,css,yml,yaml}"
+      run: pnpm exec oxfmt --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true

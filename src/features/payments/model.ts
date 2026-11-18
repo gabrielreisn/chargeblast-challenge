@@ -29,13 +29,24 @@ export const paymentSchema = z.object({
   amountRefunded: z.number().int().nonnegative(),
   description: z.string().nullable(),
 });
+/**
+ * synthetic: committed demo fixture · stripe-sandbox: snapshot saved by `pnpm stripe:import`
+ * · stripe-api: fetched from the Stripe API at request time (`PAYMENTS_SOURCE=remote`).
+ */
+export const snapshotSources = ["synthetic", "stripe-sandbox", "stripe-api"] as const;
+export const snapshotSourceLabels = {
+  synthetic: "Synthetic demo fixture",
+  "stripe-sandbox": "Stripe sandbox snapshot",
+  "stripe-api": "Live from Stripe sandbox",
+};
 export const snapshotSchema = z.object({
   schemaVersion: z.literal(1),
-  source: z.enum(["synthetic", "stripe-sandbox"]),
+  source: z.enum(snapshotSources),
   importedAt: z.iso.datetime(),
   payments: z.array(paymentSchema).max(1000),
 });
 export type Payment = z.infer<typeof paymentSchema>;
 export type Snapshot = z.infer<typeof snapshotSchema>;
+export type SnapshotSource = Snapshot["source"];
 export type PaymentStatus = Payment["status"];
 export type PaymentMethod = Payment["method"];

@@ -91,6 +91,11 @@ export function serializeQuery(query: PaymentQuery) {
   for (const [key, value] of Object.entries(fields)) if (value) params.set(key, value);
   return params.toString();
 }
+/** URL of the payments list for a query; omits default values. */
+export function paymentsHref(query: PaymentQuery) {
+  const search = serializeQuery(query);
+  return `/payments${search ? `?${search}` : ""}`;
+}
 const formatters = new Map<string, Intl.NumberFormat>();
 function currencyFormatter(currency: string) {
   let formatter = formatters.get(currency);

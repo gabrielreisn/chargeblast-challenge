@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type Stripe from "stripe";
-import { assertSandboxKey, normalizePayment } from "./normalize";
+import { assertSandboxKey, normalizeCharge, normalizePayment } from "./normalize";
 const pi = (patch: Record<string, unknown> = {}) =>
   ({
     id: "pi_test",
@@ -82,5 +82,46 @@ describe("sandbox normalization", () => {
       last4: null,
       customer: { name: null, email: null },
     });
+  });
+});
+
+const charge = (patch: Record<string, unknown> = {}) =>
+  ({
+    id: "ch_test",
+    amount: 2000,
+    amount_refunded: 0,
+    currency: "usd",
+    status: "succeeded",
+    captured: true,
+    livemode: false,
+    created: 1700000000,
+    customer: null,
+    payment_intent: null,
+    billing_details: { name: "Legacy Buyer", email: null },
+    payment_method_details: { type: "card", card: { brand: "mastercard", last4: "4795" } },
+    receipt_email: "receipt@example.com",
+    description: null,
+    ...patch,
+  }) as unknown as Stripe.Charge;
+
+describe("legacy charge normalization", () => {
+  test.each([
+    [{ status: "succeeded" }, "succeeded", "succeeded"],
+    [{ status: "failed" }, "failed", "failed"],
+    [{ status: "pending" }, "pending", "pending"],
+    [{ status: "succeeded", captured: false }, "pending", "uncaptured"],
+    [{ status: "succeeded", amount_refunded: 500 }, "refunded", "succeeded"],
+  ])("maps %o to %s", (patch, status, sourceStatus) => {
+    expect(normalizeCharge(charge(patch))).toMatchObject({ status, sourceStatus });
+  });
+  test("reads card, billing and receipt details and rejects live charges", () => {
+    expect(normalizeCharge(charge())).toMatchObject({
+      id: "ch_test",
+      method: "card",
+      brand: "mastercard",
+      last4: "4795",
+      customer: { name: "Legacy Buyer", email: "receipt@example.com" },
+    });
+    expect(() => normalizeCharge(charge({ livemode: true }))).toThrow("Live payments");
   });
 });

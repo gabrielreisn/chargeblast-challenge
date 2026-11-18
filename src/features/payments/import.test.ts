@@ -27,8 +27,15 @@ const payment = {
   description: null,
   client_secret: "must-not-export",
 };
-function client(generator: () => AsyncGenerator<unknown>) {
-  return { paymentIntents: { list: generator } } as unknown as Pick<Stripe, "paymentIntents">;
+async function* none(): AsyncGenerator<unknown> {}
+function client(
+  intents: () => AsyncGenerator<unknown>,
+  charges: () => AsyncGenerator<unknown> = none,
+) {
+  return { paymentIntents: { list: intents }, charges: { list: charges } } as unknown as Pick<
+    Stripe,
+    "paymentIntents" | "charges"
+  >;
 }
 test("imports the SDK async iterator and writes only normalized data", async () => {
   const path = await destination();
@@ -78,4 +85,59 @@ test("caps imports at 1000 and aborts on live data before writing", async () => 
     ),
   ).rejects.toThrow("Live payments");
   expect(JSON.parse(await readFile(path, "utf8")).payments).toHaveLength(1000);
+});
+
+test("caps request-time snapshots and labels them as fetched from the API", async () => {
+  const { fetchStripeSnapshot } = await import("./stripe-source");
+  const snapshot = await fetchStripeSnapshot(
+    client(async function* () {
+      for (let index = 0; index < 5; index += 1) yield { ...payment, id: `pi_${index}` };
+    }),
+    { source: "stripe-api", limit: 3 },
+  );
+  expect(snapshot.source).toBe("stripe-api");
+  expect(snapshot.payments.map((p) => p.id)).toEqual(["pi_0", "pi_1", "pi_2"]);
+});
+
+test("refuses to build a client without a sandbox key", async () => {
+  const { createStripeClient } = await import("./stripe-source");
+  expect(() => createStripeClient(undefined)).toThrow("sandbox");
+  expect(() => createStripeClient("sk_live_123")).toThrow("Live keys are rejected");
+});
+
+test("merges standalone legacy Charges with PaymentIntents, newest first, without duplicates", async () => {
+  const { fetchStripeSnapshot } = await import("./stripe-source");
+  const charge = {
+    id: "ch_legacy",
+    object: "charge",
+    amount: 2000,
+    amount_refunded: 0,
+    currency: "usd",
+    status: "succeeded",
+    captured: true,
+    livemode: false,
+    created: 1700000500,
+    customer: null,
+    payment_intent: null,
+    billing_details: { name: null, email: null },
+    payment_method_details: { type: "card", card: { brand: "visa", last4: "4242", wallet: null } },
+    receipt_email: null,
+    description: null,
+  };
+  const snapshot = await fetchStripeSnapshot(
+    client(
+      async function* () {
+        yield payment;
+      },
+      async function* () {
+        yield charge;
+        yield { ...charge, id: "ch_from_intent", payment_intent: "pi_test" };
+      },
+    ),
+    { source: "stripe-api" },
+  );
+  expect(snapshot.payments.map((p) => [p.id, p.status, p.method, p.last4])).toEqual([
+    ["ch_legacy", "succeeded", "card", "4242"],
+    ["pi_test", "succeeded", "other", null],
+  ]);
 });

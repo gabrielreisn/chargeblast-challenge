@@ -1,6 +1,9 @@
 import { statusLabels, methodLabels } from "./model";
 import type { PaymentQuery } from "./query";
-export function getFilterChips(query: PaymentQuery) {
+
+export type FilterChip = { key: string; label: string; reset: Partial<PaymentQuery> };
+
+export function getFilterChips(query: PaymentQuery): FilterChip[] {
   return [
     query.date
       ? {

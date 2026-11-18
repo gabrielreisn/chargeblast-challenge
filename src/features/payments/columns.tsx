@@ -3,12 +3,12 @@ import { useMemo } from "react";
 import Link from "next/link";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { ArrowRight, Ellipsis } from "lucide-react";
-import type { ColumnDef } from "@tanstack/react-table";
-import type { Payment } from "./model";
 import { formatAmount, formatDate, relativeTime, TIME_ZONE } from "./query";
+import { cn, menuItemStyles, menuStyles, rowIconButtonStyles } from "@/components/ui/styles";
 import { CopyId, Hint, PaymentMethodCell, StatusBadge } from "./ui";
+import type { PaymentColumnDef } from "./table-features";
 export function usePaymentColumns(now: number) {
-  return useMemo<ColumnDef<Payment>[]>(
+  return useMemo<PaymentColumnDef[]>(
     () => [
       {
         id: "select",
@@ -22,7 +22,10 @@ export function usePaymentColumns(now: number) {
             aria-label="Select this page"
             checked={table.getIsAllRowsSelected()}
             ref={(element) => {
-              if (element) element.indeterminate = table.getIsSomeRowsSelected();
+              // v9: getIsSomeRowsSelected() means "at least one", so exclude the all-selected case.
+              if (element)
+                element.indeterminate =
+                  table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected();
             }}
             onChange={table.getToggleAllRowsSelectedHandler()}
           />
@@ -42,9 +45,16 @@ export function usePaymentColumns(now: number) {
         size: 125,
         minSize: 110,
         cell: ({ row: { original: p } }) => (
-          <Link className="amount-cell" href={`/payments/${p.id}`}>
-            {formatAmount(p.amount, p.currency)}
-            <span className="currency">{p.currency.toUpperCase()}</span>
+          <Link
+            className="group/amount flex w-full items-center justify-end gap-1.5"
+            href={`/payments/${p.id}`}
+          >
+            {/* End-aligned tabular figures line decimals up row to row. */}
+            <span className="font-semibold text-ink tabular-nums group-hover/amount:text-brand">
+              {formatAmount(p.amount, p.currency)}
+            </span>
+            {/* Fixed width so amounts stay aligned across currency codes of different widths. */}
+            <span className="w-6.5 text-subtle">{p.currency.toUpperCase()}</span>
           </Link>
         ),
       },
@@ -67,7 +77,7 @@ export function usePaymentColumns(now: number) {
         header: "Description",
         size: 170,
         minSize: 120,
-        cell: ({ row }) => <span className="muted">{row.original.description ?? "—"}</span>,
+        cell: ({ row }) => <span className="text-muted">{row.original.description ?? "—"}</span>,
       },
       {
         id: "customer",
@@ -94,7 +104,7 @@ export function usePaymentColumns(now: number) {
         minSize: 160,
         cell: ({ row }) => (
           <Hint text={`${relativeTime(row.original.created, now)} · ${TIME_ZONE}`}>
-            <button className="date-cell">
+            <button type="button" className="text-10 text-[#6d788c]">
               <time dateTime={new Date(row.original.created * 1000).toISOString()}>
                 {formatDate(row.original.created)}
               </time>
@@ -112,14 +122,14 @@ export function usePaymentColumns(now: number) {
         cell: ({ row }) => (
           <Dropdown.Root>
             <Dropdown.Trigger
-              className="icon-button row-actions"
+              className={cn(rowIconButtonStyles, "opacity-50 group-hover/row:opacity-100")}
               aria-label={`Actions for payment ${row.original.id}`}
             >
               <Ellipsis size={15} />
             </Dropdown.Trigger>
             <Dropdown.Portal>
-              <Dropdown.Content className="menu" align="end">
-                <Dropdown.Item asChild>
+              <Dropdown.Content className={menuStyles} align="end">
+                <Dropdown.Item asChild className={menuItemStyles}>
                   <Link href={`/payments/${row.original.id}`}>
                     View payment details <ArrowRight size={13} />
                   </Link>
