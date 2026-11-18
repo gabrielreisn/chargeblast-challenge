@@ -76,18 +76,15 @@ Coverage is 84% of lines overall, but these files are low (line coverage):
 3. **License allow-list.** `dependency-review-action` can fail PRs that add
    dependencies under disallowed licenses (`allow-licenses`).
 4. **OpenSSF Scorecard** for a periodic supply-chain report.
-5. **GitHub secret scanning with push protection.** A repository setting (free
-   for public repos) that blocks pushes containing known token formats,
-   including Stripe keys. Complements the gitleaks checks.
-6. **Fixture data guard.** A small test asserting every fixture email ends in
+5. **Fixture data guard.** A small test asserting every fixture email ends in
    `@example.com` and IDs look synthetic, so real customer data can't be
    committed by accident.
-7. **CodeQL** (`github/codeql-action`, JavaScript/TypeScript) for security-focused
+6. **CodeQL** (`github/codeql-action`, JavaScript/TypeScript) for security-focused
    static analysis such as injection and unsafe URL handling.
-8. **End-to-end smoke tests.** Playwright against `pnpm build && pnpm start`
+7. **End-to-end smoke tests.** Playwright against `pnpm build && pnpm start`
    covering the drag-and-drop, filters and tab transitions that jsdom can't
    exercise, plus an axe accessibility scan per page.
-9. **Lighthouse CI or bundle-size budget.** Fail when performance or
+8. **Lighthouse CI or bundle-size budget.** Fail when performance or
    accessibility scores, or client JavaScript size, regress past a threshold.
 
 ## Done
@@ -135,6 +132,9 @@ Coverage is 84% of lines overall, but these files are low (line coverage):
   majors (`pnpm/action-setup` v6, `gitleaks-action` v3: v2 stopped working when
   GitHub removed Node 20 from runners). Shared setup lives in a composite
   action (`.github/actions/setup`); Dependabot keeps the pins current.
+- **GitHub repository settings.** Secret scanning with push protection was
+  already enabled. The dependency graph (required by dependency review) and
+  Dependabot vulnerability alerts were turned on for PR #2.
 - **Pre-commit secret scan.** lefthook runs
   `gitleaks git --pre-commit --staged` before lint and format (`protect` is
   deprecated in gitleaks 8.19+). It fails with install instructions if gitleaks
