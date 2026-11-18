@@ -50,4 +50,4 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:unit
+      - run: pnpm test:coverage

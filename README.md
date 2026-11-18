@@ -1,6 +1,6 @@
 # Chargeblast · Payments
 
-A recreation of the Stripe Dashboard Payments screen using Next.js, TypeScript, Tailwind CSS, TanStack Table, and accessible Radix primitives. Includes 500 synthetic payments across five currencies, four statuses, cards, wallets, and ACH.
+A recreation of the Stripe Dashboard Payments screen using Next.js, TypeScript 7, Tailwind CSS 4 (utilities only), TanStack Table, and accessible Radix primitives. Includes 500 synthetic payments across five currencies, four statuses, cards, wallets, and ACH.
 
 ## Run locally
 
@@ -46,13 +46,16 @@ pnpm lint
 pnpm format:check
 pnpm typecheck
 pnpm test:unit
+pnpm test:coverage
 pnpm build
 ```
 
-GitHub Actions runs separate lint/format, typecheck, and unit-test jobs with frozen pnpm installs. Tests cover query combinations, timezone boundaries, currency precision, status normalization, safe import persistence, sorting, pagination, and clipboard behavior. Use `pnpm test:watch` during development.
+`pnpm install` installs a [lefthook](https://lefthook.dev) pre-commit hook (`lefthook.yml`) that runs `oxlint --fix` and then `oxfmt` on staged files and restages the fixes; unstaged edits are left untouched. Skip it for a single command with `LEFTHOOK=0` only when necessary. `pnpm test:coverage` writes text, HTML (`coverage/index.html`) and LCOV reports and fails below the thresholds in `vitest.config.mts`.
+
+GitHub Actions runs separate lint/format, typecheck, and unit-test (with coverage thresholds) jobs with frozen pnpm installs. Tests cover query combinations, timezone boundaries, currency precision, status normalization, safe import persistence, sorting, pagination, and clipboard behavior. Use `pnpm test:watch` during development.
 
 ## Deployment
 
 [Production](https://chargeblast-challenge-starter.vercel.app/payments) · [GitHub](https://github.com/gabrielreisn/chargeblast-challenge)
 
-Vercel detects Next.js and pnpm from the repository. No Stripe runtime key is needed. The dashboard is a read-only demo; create-payment and unrelated navigation are reference elements rather than money-moving operations. See `plan.md` for the original requirement mapping and delivery checklist.
+Vercel detects Next.js and pnpm from the repository. Canonical URLs, Open Graph tags, `sitemap.xml` and `robots.txt` use `NEXT_PUBLIC_SITE_URL` when set, otherwise Vercel's production domain; all metadata is defined in `src/lib/seo.ts`. No Stripe runtime key is needed. The dashboard is a read-only demo; create-payment and unrelated navigation are reference elements rather than money-moving operations. See `plan.md` for the original requirement mapping and delivery checklist.

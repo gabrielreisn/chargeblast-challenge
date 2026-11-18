@@ -2,18 +2,22 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fixture from "../../../data/payments.fixture.json";
+import { DashboardProviders } from "@/components/dashboard/providers";
+import { TopbarSearch } from "@/components/dashboard/topbar-search";
 import { snapshotSchema } from "./model";
 import { PaymentsScreen } from "./payments-screen";
 import { CopyId } from "./ui";
-import * as Tooltip from "@radix-ui/react-tooltip";
-vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(window.location.search),
-}));
+vi.mock("next/navigation", () => import("@/test/next-navigation"));
 const snapshot = snapshotSchema.parse(fixture);
 const now = Date.parse(snapshot.importedAt) / 1000;
 beforeEach(() => window.history.replaceState(null, "", "/payments"));
 function renderScreen() {
-  return render(<PaymentsScreen snapshot={snapshot} now={now} />);
+  return render(
+    <DashboardProviders>
+      <TopbarSearch />
+      <PaymentsScreen snapshot={snapshot} now={now} />
+    </DashboardProviders>,
+  );
 }
 function bodyRows() {
   return within(screen.getByRole("table")).getAllByRole("row").slice(1);
@@ -57,21 +61,22 @@ test("sorts amounts and exposes the direction accessibly", async () => {
   await user.click(sort);
   expect(sort.closest("th")).toHaveAttribute("aria-sort", "ascending");
 });
-test("copies the complete ID and reports clipboard failure", async () => {
+test("copies the complete ID and reports clipboard failure with a toast", async () => {
   const user = userEvent.setup();
   const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
   const id = "pi_a_complete_payment_id";
   render(
-    <Tooltip.Provider>
+    <DashboardProviders>
       <CopyId id={id} />
-    </Tooltip.Provider>,
+    </DashboardProviders>,
   );
   await user.click(screen.getByRole("button", { name: `Copy payment ID ${id}` }));
   expect(write).toHaveBeenCalledWith(id);
   expect(screen.getByRole("status")).toHaveTextContent("Copied");
   write.mockRejectedValue(new Error("Denied"));
   await user.click(screen.getByRole("button", { name: `Copy payment ID ${id}` }));
-  expect(screen.getByRole("status")).toHaveTextContent("Could not copy");
+  expect(await screen.findByText("Couldn’t copy payment ID")).toBeVisible();
+  expect(screen.getByRole("status")).toHaveTextContent("");
 });
 
 test("applies multi-select status/method filters through accessible popovers", async () => {

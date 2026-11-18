@@ -1,15 +1,17 @@
-import type { Metadata } from "next";
 import "./globals.css";
-export const metadata: Metadata = {
-  title: "Payments · cramly.ai",
-  description:
-    "A Stripe-inspired payments workspace. Explore sandbox payments, customers, and transaction details.",
-};
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+import { rootMetadata, viewport as rootViewport } from "@/lib/seo";
+
+export const metadata = rootMetadata;
+export const viewport = rootViewport;
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
       <body>
-        <a className="skip-link" href="#main-content">
+        <a
+          className="fixed -top-25 left-5 z-100 bg-brand p-3 text-white focus:top-2.5"
+          href="#main-content"
+        >
           Skip to content
         </a>
         {children}

@@ -1,0 +1,68 @@
+@AGENTS.md
+
+# Project rules
+
+Stripe-style payments dashboard: Next.js 16 App Router, React 19, TypeScript 7, Tailwind CSS 4, Radix primitives, TanStack Table, Vitest. Package manager is pnpm.
+
+Before finishing any change, run and pass: `pnpm lint`, `pnpm format:check` (fix with `pnpm format`), `pnpm typecheck`, `pnpm test:coverage`, `pnpm build`.
+
+- A lefthook pre-commit hook (`lefthook.yml`, installed by the `prepare` script) runs `oxlint --fix` then `oxfmt` on staged files and restages the fixes. Never bypass it with `--no-verify` or `LEFTHOOK=0`; fix the reported problem instead. Add new hooks as `jobs` in `lefthook.yml`.
+- `pnpm-workspace.yaml` denies lefthook's own postinstall (`allowBuilds: lefthook: false`); hooks install through `prepare` instead. Keep build scripts denied unless a dependency truly needs one.
+- Coverage thresholds in `vitest.config.mts` are a ratchet enforced in CI. New code ships with tests; raise the thresholds when coverage improves and never lower them. Next.js route entry files in `src/app/` are excluded; keep logic out of them so it stays covered.
+
+## Styling: Tailwind only
+
+- Style with Tailwind utility classes in JSX. Do not add CSS classes, CSS modules, inline `style` for static design, or new rules to `globals.css`.
+- `src/app/globals.css` holds only `@import "tailwindcss"`, the `@theme` design tokens, and a minimal `@layer base`. When a value repeats, add a token to `@theme` (colors, font sizes, shadows, animations, breakpoints) instead of a class.
+- Font sizes are tokens named by pixel value: `text-10` = 10px. Breakpoints are `md` 700px, `lg` 1100px, `2xl` 1600px.
+- Repeated recipes live in `src/components/ui/styles.ts` (`buttonStyles()`, `menuStyles`, `fieldStyles`, …) and are combined with `cn()`. `cn` only joins strings, so never pass two classes that set the same property (for example `my-1.5` with `mb-0`); write the full class list instead.
+- Use state variants instead of conditional class logic where the DOM already carries the state: `aria-pressed:`, `aria-[current=page]:`, `aria-disabled:`, `data-highlighted:`, `group-hover/name:`.
+- Allowed exceptions: inline `style` for runtime values (TanStack column widths) and in `opengraph-image.tsx` (Satori supports inline styles only).
+
+## Metadata and SEO
+
+- All metadata comes from `src/lib/seo.ts`. Pages export `metadata = routeMetadata("<key>")` or `privateMetadata("<title>")`; never hand-write a `Metadata` object in a route file.
+- A new public page needs an entry in `routes` in `seo.ts`, which also adds it to `sitemap.xml`. Record-detail and error pages use `privateMetadata` (noindex) and stay out of the sitemap.
+- `app/robots.ts`, `app/sitemap.ts` and `app/manifest.ts` only re-export helpers from `seo.ts`. The site origin comes from `NEXT_PUBLIC_SITE_URL`, then Vercel's production URL.
+- Next merges metadata shallowly: when overriding `openGraph` or `twitter`, spread the shared defaults as `routeMetadata` does.
+
+## TypeScript
+
+- Always extract props and options into a named type declared above the component or function. Never type parameters inline:
+
+  ```tsx
+  type ActiveFiltersProps = { query: PaymentQuery; update: UpdateQuery };
+
+  export function ActiveFilters({ query, update }: ActiveFiltersProps) {}
+  ```
+
+- Name types `<Component>Props` for components and `<Thing>Options` for option bags. Export shared callback types (`UpdateQuery`, `MoveColumn`) from the module that owns them.
+- No `any`. Narrow `unknown` (for example a thrown `error`) before reading properties.
+
+## React
+
+- Effects use named function expressions so stack traces and DevTools show intent:
+
+  ```tsx
+  useEffect(function focusSearchOnSlash() {
+    // …
+  }, []);
+  ```
+
+- Avoid `useState`; derive values during render instead. Before adding state, check whether the value can come from props, the URL (`useSearchParams`), another piece of state, an uncontrolled input read via `FormData`, or a Radix primitive that already manages open/closed state.
+- Reset state by changing a component's `key` or keying state to its source (see the row selection in `payments-screen.tsx`). Do not use an effect to sync or reset state.
+- Use `useState` only for genuine user input with no other source of truth (dismissing a banner, copy feedback, table column layout, last-submit validation errors). Add a one-line comment explaining why the state is needed.
+- Filters, sorting and pagination live in the URL; update them through `paymentsHref()`.
+
+## Feedback and errors
+
+- Rendering and data-loading failures are handled by route boundaries: `app/(dashboard)/(transactions)/error.tsx` (tabs stay usable), `app/(dashboard)/error.tsx`, and `app/global-error.tsx`. They render `ErrorState` and receive `{ error, retry }`.
+- Failures from user actions (copy, export, requests) show a toast. Use `requestJson()` and `toastRequestError()` from `src/lib/api-client.ts` for HTTP calls; never surface raw server messages.
+- Use `EmptyState` for empty and placeholder views, and `LoadingState` for Suspense fallbacks.
+
+## Structure
+
+- `src/app/(dashboard)/layout.tsx` renders the shell (sidebar, top bar, providers) once. `(transactions)/layout.tsx` adds the Transactions header and tabs; tab metadata lives in `transactionTabs` in `transactions-header.tsx`.
+- Feature code lives in `src/features/<feature>/`, shared UI in `src/components/`, and server-only data access in `src/lib/`.
+- Tests sit next to the code as `*.test.ts(x)`. Mock `next/navigation` with `vi.mock("next/navigation", () => import("@/test/next-navigation"))`, which re-renders on history changes like the App Router does.
+- This is a read-only demo: never add actions that move money. Reference-only controls use `ReadOnlyButton`.

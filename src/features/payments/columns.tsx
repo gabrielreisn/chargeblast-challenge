@@ -6,6 +6,7 @@ import { ArrowRight, Ellipsis } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Payment } from "./model";
 import { formatAmount, formatDate, relativeTime, TIME_ZONE } from "./query";
+import { cn, menuItemStyles, menuStyles, rowIconButtonStyles } from "@/components/ui/styles";
 import { CopyId, Hint, PaymentMethodCell, StatusBadge } from "./ui";
 export function usePaymentColumns(now: number) {
   return useMemo<ColumnDef<Payment>[]>(
@@ -42,9 +43,12 @@ export function usePaymentColumns(now: number) {
         size: 125,
         minSize: 110,
         cell: ({ row: { original: p } }) => (
-          <Link className="amount-cell" href={`/payments/${p.id}`}>
+          <Link
+            className="flex items-center gap-2.25 text-[#3f4a5e] tabular-nums hover:text-brand"
+            href={`/payments/${p.id}`}
+          >
             {formatAmount(p.amount, p.currency)}
-            <span className="currency">{p.currency.toUpperCase()}</span>
+            <span className="text-10 text-[#8993a2]">{p.currency.toUpperCase()}</span>
           </Link>
         ),
       },
@@ -67,7 +71,7 @@ export function usePaymentColumns(now: number) {
         header: "Description",
         size: 170,
         minSize: 120,
-        cell: ({ row }) => <span className="muted">{row.original.description ?? "—"}</span>,
+        cell: ({ row }) => <span className="text-muted">{row.original.description ?? "—"}</span>,
       },
       {
         id: "customer",
@@ -94,7 +98,7 @@ export function usePaymentColumns(now: number) {
         minSize: 160,
         cell: ({ row }) => (
           <Hint text={`${relativeTime(row.original.created, now)} · ${TIME_ZONE}`}>
-            <button className="date-cell">
+            <button type="button" className="text-10 text-[#6d788c]">
               <time dateTime={new Date(row.original.created * 1000).toISOString()}>
                 {formatDate(row.original.created)}
               </time>
@@ -112,14 +116,14 @@ export function usePaymentColumns(now: number) {
         cell: ({ row }) => (
           <Dropdown.Root>
             <Dropdown.Trigger
-              className="icon-button row-actions"
+              className={cn(rowIconButtonStyles, "opacity-50 group-hover/row:opacity-100")}
               aria-label={`Actions for payment ${row.original.id}`}
             >
               <Ellipsis size={15} />
             </Dropdown.Trigger>
             <Dropdown.Portal>
-              <Dropdown.Content className="menu" align="end">
-                <Dropdown.Item asChild>
+              <Dropdown.Content className={menuStyles} align="end">
+                <Dropdown.Item asChild className={menuItemStyles}>
                   <Link href={`/payments/${row.original.id}`}>
                     View payment details <ArrowRight size={13} />
                   </Link>
