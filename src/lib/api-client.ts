@@ -83,7 +83,7 @@ export async function requestJson<T>(input: RequestInfo | URL, init?: RequestIni
 }
 
 /** User-facing description of any thrown value. */
-export function describeError(error: unknown, fallback = "Something went wrong. Try again.") {
+function describeError(error: unknown, fallback = "Something went wrong. Try again.") {
   if (error instanceof ApiError) return error.message;
   return fallback;
 }

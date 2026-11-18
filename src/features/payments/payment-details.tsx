@@ -33,8 +33,6 @@ type PaymentDetailsProps = { payment: Payment; source: SnapshotSource };
 const activityNotes: Record<SnapshotSource, string> = {
   synthetic:
     "Illustrative demo timeline. Only the creation timestamp is represented by the sample data.",
-  "stripe-sandbox":
-    "Snapshot activity. Import Stripe Events separately for a complete event timeline.",
   "stripe-api":
     "Current state from Stripe. Fetch Stripe Events separately for a complete event timeline.",
 };

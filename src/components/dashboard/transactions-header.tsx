@@ -6,7 +6,7 @@ import { ChartNoAxesCombined, Plus, Settings, Share } from "lucide-react";
 import { ReadOnlyButton } from "./read-only-button";
 import { ActiveTabIndicator } from "./route-transitions";
 
-export const transactionTabs = [
+const transactionTabs = [
   { segment: "payments", label: "Payments" },
   { segment: "payouts", label: "Payouts" },
   { segment: "topups", label: "Top-ups" },

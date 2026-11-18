@@ -1,9 +1,9 @@
 /**
  * Selected with the `PAYMENTS_SOURCE` environment variable (or a `.env` file).
- * local: committed fixture (or `data/stripe-payments.local.json` in development).
+ * local: the committed synthetic fixture (`data/payments.fixture.json`).
  * remote: PaymentIntents fetched from the Stripe API with `STRIPE_SECRET_KEY`.
  */
-export const paymentsSources = ["local", "remote"] as const;
+const paymentsSources = ["local", "remote"] as const;
 
 export type PaymentsSource = (typeof paymentsSources)[number];
 

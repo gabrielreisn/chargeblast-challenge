@@ -1,5 +1,4 @@
 import "server-only";
-import { readFile } from "node:fs/promises";
 import { cacheLife } from "next/cache";
 import fixture from "../../data/payments.fixture.json";
 import { snapshotSchema, type Snapshot } from "@/features/payments/model";
@@ -16,15 +15,7 @@ export async function getPaymentsData(): Promise<Snapshot> {
   return source === "remote" ? getStripeSnapshot() : getLocalSnapshot();
 }
 
-async function getLocalSnapshot() {
-  if (process.env.NODE_ENV === "development") {
-    try {
-      const content = await readFile(`${process.cwd()}/data/stripe-payments.local.json`, "utf8");
-      return snapshotSchema.parse(JSON.parse(content));
-    } catch (error) {
-      if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
-    }
-  }
+function getLocalSnapshot() {
   return snapshotSchema.parse(fixture);
 }
 
@@ -34,5 +25,5 @@ async function getStripeSnapshot() {
   cacheLife("minutes");
   // The key is read inside the cached scope, never passed as an argument, so it stays out of cache keys.
   const stripe = createStripeClient(process.env.STRIPE_SECRET_KEY);
-  return fetchStripeSnapshot(stripe, { source: "stripe-api" });
+  return fetchStripeSnapshot(stripe);
 }
