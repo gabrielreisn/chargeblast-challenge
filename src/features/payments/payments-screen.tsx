@@ -123,7 +123,7 @@ export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
   );
   const counts = useMemo(() => countByStatus(snapshot.payments), [snapshot.payments]);
   const currencies = useMemo(
-    () => [...new Set(snapshot.payments.map((payment) => payment.currency))].sort(),
+    () => [...new Set(snapshot.payments.map((payment) => payment.currency))].toSorted(),
     [snapshot.payments],
   );
   const chips = getFilterChips(query);
@@ -140,8 +140,11 @@ export function PaymentsScreen({ snapshot, now }: PaymentsScreenProps) {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: (updater) =>
       setSelection((current) => {
-        const rows = current.key === queryKey ? current.rows : {};
-        return { key: queryKey, rows: typeof updater === "function" ? updater(rows) : updater };
+        const previous = current.key === queryKey ? current.rows : {};
+        return {
+          key: queryKey,
+          rows: typeof updater === "function" ? updater(previous) : updater,
+        };
       }),
     columnResizeMode: "onChange",
     enableRowSelection: true,

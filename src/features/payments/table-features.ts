@@ -24,7 +24,7 @@ export const paymentTableFeatures = tableFeatures({
   columnResizingFeature,
 });
 
-export type PaymentTableFeatures = typeof paymentTableFeatures;
+type PaymentTableFeatures = typeof paymentTableFeatures;
 /** The React adapter table, which adds reactive `state` on top of the core table API. */
 export type PaymentTable = ReactTable<PaymentTableFeatures, Payment>;
 export type PaymentColumnDef = ColumnDef<PaymentTableFeatures, Payment>;

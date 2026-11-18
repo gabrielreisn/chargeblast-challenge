@@ -10,7 +10,7 @@ import {
   menuStyles,
 } from "@/components/ui/styles";
 import type { MoveColumn } from "./payment-table";
-import type { PaymentTable } from "./table-features";
+import { fixedColumnIds, type PaymentTable } from "./table-features";
 
 type ColumnMenuProps = { table: PaymentTable; moveColumn: MoveColumn };
 
@@ -32,8 +32,8 @@ export function ColumnMenu({ table, moveColumn }: ColumnMenuProps) {
           </p>
           {table
             .getAllLeafColumns()
-            .filter((column) => !["select", "actions"].includes(column.id))
-            .sort((a, b) => columnOrder.indexOf(a.id) - columnOrder.indexOf(b.id))
+            .filter((column) => !fixedColumnIds.includes(column.id))
+            .toSorted((a, b) => columnOrder.indexOf(a.id) - columnOrder.indexOf(b.id))
             .map((column) => {
               const index = columnOrder.indexOf(column.id);
               const label = column.columnDef.header as string;

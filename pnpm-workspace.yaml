@@ -1,2 +1,16 @@
+# Dependency install scripts are denied by default. Allow one only when a
+# package truly needs it; lefthook's hooks install through `prepare` instead.
 allowBuilds:
   lefthook: false
+
+# Supply-chain hardening: don't install versions published less than a day ago
+# (value in minutes). Compromised releases are usually caught and pulled within
+# hours. pnpm also verifies the lockfile against this on every install.
+minimumReleaseAge: 1440
+
+auditConfig:
+  ignoreGhsas:
+    # picomatch ReDoS via extglobs. Dev-only (vite, vitest, tooling), never in
+    # the production bundle (`pnpm audit --prod` is clean), and no patched
+    # version exists yet. Remove once picomatch ships a fix.
+    - GHSA-fc5q-39xc-vjpf

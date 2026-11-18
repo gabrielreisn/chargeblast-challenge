@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Hint } from "@/features/payments/ui";
 import { buttonStyles } from "@/components/ui/styles";
 
-export const READ_ONLY_HINT = "This read-only demo doesn’t move money";
+const READ_ONLY_HINT = "This read-only demo doesn’t move money";
 
 type ReadOnlyButtonProps = {
   children: ReactNode;

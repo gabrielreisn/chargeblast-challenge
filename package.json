@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "oxlint --deny-warnings .",
     "lint:fix": "oxlint --fix .",
+    "knip": "knip",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "typecheck": "next typegen && tsc --noEmit",
@@ -16,8 +17,7 @@
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "data:generate": "node scripts/generate-payments.mjs",
-    "stripe:import": "node --env-file-if-exists=.env.local scripts/import-stripe-payments.ts",
+    "data:generate": "node scripts/generate-payments.ts",
     "prepare": "git rev-parse --git-dir > /dev/null 2>&1 || exit 0; lefthook install"
   },
   "dependencies": {
@@ -50,6 +50,7 @@
     "@vitejs/plugin-react": "^6.3.0",
     "@vitest/coverage-v8": "^5.1.0",
     "jsdom": "^31.0.1",
+    "knip": "^6.45.1",
     "lefthook": "^2.2.2",
     "oxfmt": "^0.79.0",
     "oxlint": "^1.94.0",

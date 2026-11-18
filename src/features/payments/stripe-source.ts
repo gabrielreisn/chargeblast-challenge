@@ -1,27 +1,21 @@
-// Shared by the request-time loader (src/lib/payments-data.ts) and the
-// `pnpm stripe:import` script. Node runs this file directly through type
-// stripping, so imports are relative and keep their `.ts` extension.
 import Stripe from "stripe";
-import { snapshotSchema, type Snapshot, type SnapshotSource } from "./model.ts";
-import { assertSandboxKey, normalizeCharge, normalizePayment } from "./normalize.ts";
+import { snapshotSchema, type Snapshot } from "./model";
+import { assertSandboxKey, normalizeCharge, normalizePayment } from "./normalize";
 
 /** Snapshots are capped at the schema maximum; larger accounts show their newest payments. */
-export const STRIPE_PAYMENT_LIMIT = 1000;
+const STRIPE_PAYMENT_LIMIT = 1000;
 
 export type StripePaymentsClient = Pick<Stripe, "paymentIntents" | "charges">;
 
-type FetchStripeSnapshotOptions = {
-  source: Extract<SnapshotSource, "stripe-sandbox" | "stripe-api">;
-  limit?: number;
-};
+type FetchStripeSnapshotOptions = { limit?: number };
+
+type ListOptions = { limit: number; createdBefore: number };
 
 /** Sandbox-only client. Throws for missing or live keys before any request is made. */
 export function createStripeClient(key: string | undefined) {
   assertSandboxKey(key);
   return new Stripe(key, { maxNetworkRetries: 3, timeout: 30_000 });
 }
-
-type ListOptions = { limit: number; createdBefore: number };
 
 async function listPaymentIntents(
   stripe: StripePaymentsClient,
@@ -64,7 +58,7 @@ async function listStandaloneCharges(
  */
 export async function fetchStripeSnapshot(
   stripe: StripePaymentsClient,
-  { source, limit = STRIPE_PAYMENT_LIMIT }: FetchStripeSnapshotOptions,
+  { limit = STRIPE_PAYMENT_LIMIT }: FetchStripeSnapshotOptions = {},
 ): Promise<Snapshot> {
   const options = { limit, createdBefore: Math.floor(Date.now() / 1000) };
   const [intents, charges] = await Promise.all([
@@ -72,10 +66,12 @@ export async function fetchStripeSnapshot(
     listStandaloneCharges(stripe, options),
   ]);
   // Both lists arrive newest first; the sort is stable, so equal timestamps keep API order.
-  const payments = [...intents, ...charges].sort((a, b) => b.created - a.created).slice(0, limit);
+  const payments = [...intents, ...charges]
+    .toSorted((a, b) => b.created - a.created)
+    .slice(0, limit);
   return snapshotSchema.parse({
     schemaVersion: 1,
-    source,
+    source: "stripe-api",
     importedAt: new Date().toISOString(),
     payments,
   });

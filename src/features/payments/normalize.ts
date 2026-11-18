@@ -1,5 +1,8 @@
 import type Stripe from "stripe";
-import { paymentSchema, type Payment, type PaymentStatus } from "./model.ts";
+import { paymentSchema, type Payment, type PaymentStatus } from "./model";
+
+// Translates Stripe API objects (PaymentIntents and legacy Charges) into the
+// app's `Payment` schema, the same shape the committed fixture already uses.
 
 export function assertSandboxKey(key: string | undefined): asserts key is string {
   if (!/^(sk|rk)_test_[A-Za-z0-9]+$/.test(key ?? ""))
@@ -17,10 +20,24 @@ type PaymentParts = {
   receiptEmail: string | null;
 };
 
+/** Stripe payment method types the table groups into its four method filters. */
+const methodByStripeType: Record<string, Payment["method"]> = {
+  card: "card",
+  us_bank_account: "ach",
+  // Link is Stripe's saved-credentials wallet.
+  link: "wallet",
+};
+
 // Deleted customers carry no `livemode`, so check for the field instead of typing it.
 function assertTestMode(objects: (object | null)[]) {
   if (objects.some((object) => object && "livemode" in object && object.livemode === true))
     throw new Error("Live related objects cannot be imported.");
+}
+
+/** Wallet-backed cards (Apple Pay, Google Pay) count as wallets, not cards. */
+function paymentMethodFor(type: string | null, wallet: string | null): Payment["method"] {
+  if (wallet) return "wallet";
+  return (type && methodByStripeType[type]) || "other";
 }
 
 /** Customer, payment method and refund fields shared by PaymentIntents and standalone Charges. */
@@ -32,14 +49,6 @@ function commonFields({ charge, customer, paymentMethod, receiptEmail }: Payment
   const card = details?.card ?? paymentMethod?.card;
   const bank = details?.us_bank_account ?? paymentMethod?.us_bank_account;
   const wallet = card?.wallet?.type ?? null;
-  const method: Payment["method"] =
-    wallet || type === "link"
-      ? "wallet"
-      : type === "card"
-        ? "card"
-        : type === "us_bank_account"
-          ? "ach"
-          : "other";
   return {
     customer: {
       id: typeof customer === "string" ? customer : (customer?.id ?? null),
@@ -55,7 +64,7 @@ function commonFields({ charge, customer, paymentMethod, receiptEmail }: Payment
         receiptEmail ??
         null,
     },
-    method,
+    method: paymentMethodFor(type, wallet),
     methodType: type,
     brand: card?.brand ?? null,
     last4: card?.last4 ?? bank?.last4 ?? null,
@@ -64,41 +73,56 @@ function commonFields({ charge, customer, paymentMethod, receiptEmail }: Payment
   };
 }
 
-export function normalizePayment(pi: Stripe.PaymentIntent) {
-  if (pi.livemode !== false) throw new Error("Live payments cannot be imported.");
-  const charge = typeof pi.latest_charge === "object" ? pi.latest_charge : null;
+/**
+ * Collapses PaymentIntent statuses into the four table statuses. Any refund wins;
+ * canceled intents and declined payment attempts are failures; every other open
+ * state (processing, requires_action, requires_capture, …) is pending.
+ */
+function paymentIntentStatus(intent: Stripe.PaymentIntent, amountRefunded: number): PaymentStatus {
+  if (amountRefunded > 0) return "refunded";
+  if (intent.status === "succeeded") return "succeeded";
+  if (intent.status === "canceled") return "failed";
+  if (intent.status === "requires_payment_method" && intent.last_payment_error) return "failed";
+  return "pending";
+}
+
+/** Same mapping for legacy Charges; an uncaptured charge is still pending. */
+function chargeStatus(charge: Stripe.Charge, amountRefunded: number): PaymentStatus {
+  if (amountRefunded > 0) return "refunded";
+  if (charge.status === "failed") return "failed";
+  if (charge.status === "succeeded" && charge.captured) return "succeeded";
+  return "pending";
+}
+
+/** Uncaptured charges report "succeeded"; name them explicitly for the details page. */
+function chargeSourceStatus(charge: Stripe.Charge) {
+  return charge.status === "succeeded" && !charge.captured ? "uncaptured" : charge.status;
+}
+
+export function normalizePayment(intent: Stripe.PaymentIntent) {
+  if (intent.livemode !== false) throw new Error("Live payments cannot be imported.");
+  const charge = typeof intent.latest_charge === "object" ? intent.latest_charge : null;
   const paymentMethod =
-    typeof pi.payment_method === "object"
-      ? pi.payment_method
-      : (pi.last_payment_error?.payment_method ?? null);
-  const customer = typeof pi.customer === "object" && pi.customer ? pi.customer : null;
+    typeof intent.payment_method === "object"
+      ? intent.payment_method
+      : (intent.last_payment_error?.payment_method ?? null);
+  const customer = typeof intent.customer === "object" ? intent.customer : null;
   assertTestMode([charge, customer, paymentMethod]);
   const fields = commonFields({
     charge,
-    customer: pi.customer,
+    customer: intent.customer,
     paymentMethod,
-    receiptEmail: pi.receipt_email,
+    receiptEmail: intent.receipt_email,
   });
-  const failed =
-    pi.status === "canceled" ||
-    (pi.status === "requires_payment_method" && Boolean(pi.last_payment_error));
-  const status: PaymentStatus =
-    fields.amountRefunded > 0
-      ? "refunded"
-      : pi.status === "succeeded"
-        ? "succeeded"
-        : failed
-          ? "failed"
-          : "pending";
   return paymentSchema.parse({
     ...fields,
-    id: pi.id,
-    amount: pi.amount,
-    currency: pi.currency,
-    status,
-    sourceStatus: pi.status,
-    created: pi.created,
-    description: pi.description,
+    id: intent.id,
+    amount: intent.amount,
+    currency: intent.currency,
+    status: paymentIntentStatus(intent, fields.amountRefunded),
+    sourceStatus: intent.status,
+    created: intent.created,
+    description: intent.description,
   });
 }
 
@@ -116,22 +140,13 @@ export function normalizeCharge(charge: Stripe.Charge) {
     paymentMethod: null,
     receiptEmail: charge.receipt_email,
   });
-  const status: PaymentStatus =
-    fields.amountRefunded > 0
-      ? "refunded"
-      : charge.status === "succeeded" && charge.captured
-        ? "succeeded"
-        : charge.status === "failed"
-          ? "failed"
-          : "pending";
   return paymentSchema.parse({
     ...fields,
     id: charge.id,
     amount: charge.amount,
     currency: charge.currency,
-    status,
-    // Uncaptured charges report "succeeded"; keep that visible on the details page.
-    sourceStatus: charge.captured || charge.status !== "succeeded" ? charge.status : "uncaptured",
+    status: chargeStatus(charge, fields.amountRefunded),
+    sourceStatus: chargeSourceStatus(charge),
     created: charge.created,
     description: charge.description,
   });

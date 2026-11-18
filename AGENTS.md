@@ -1,3 +1,7 @@
+## Engineering principles
+
+- Prefer readability over performance. Optimize only in strict cases, such as a measured bottleneck or a known hot path (for example, rendering large tables), and leave a comment explaining why the faster version is needed.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know

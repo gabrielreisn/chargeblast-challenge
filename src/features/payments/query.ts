@@ -169,7 +169,7 @@ export function queryPayments(payments: Payment[], query: PaymentQuery, now: num
         (!query.max || amount <= Number(query.max))
       );
     })
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       const difference =
         query.sort === "created"
           ? a.created - b.created
@@ -179,9 +179,11 @@ export function queryPayments(payments: Payment[], query: PaymentQuery, now: num
       return (query.direction === "asc" ? difference : -difference) || a.id.localeCompare(b.id);
     });
 }
+/** Quotes a CSV field and neutralizes spreadsheet formula prefixes (=, +, @, -). */
+function escapeCsvField(value: string) {
+  return `"${(/^[=+@\-\t\r\n]/.test(value) ? "'" : "") + value.replaceAll('"', '""')}"`;
+}
 export function csvForPayments(payments: Payment[]) {
-  const escape = (value: string) =>
-    `"${(/^[=+@\-\t\r\n]/.test(value) ? "'" : "") + value.replaceAll('"', '""')}"`;
   return [
     [
       "Payment ID",
@@ -204,6 +206,6 @@ export function csvForPayments(payments: Payment[]) {
       new Date(p.created * 1000).toISOString(),
     ]),
   ]
-    .map((row) => row.map(escape).join(","))
+    .map((row) => row.map(escapeCsvField).join(","))
     .join("\r\n");
 }

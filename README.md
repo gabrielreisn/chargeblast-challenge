@@ -36,15 +36,17 @@ Dates use `America/Sao_Paulo`. Money stays in integer minor units and respects e
 
 ## Data
 
-The deployed application uses `data/payments.fixture.json`, containing fictional customers at `example.com`. Regenerate it with `pnpm data:generate`, optionally with a fixed ISO timestamp:
+There are exactly two sources (see [Choosing the data source](#choosing-the-data-source)):
 
-```sh
-pnpm data:generate 2026-11-18T00:00:00Z
-```
+- `local`: `data/payments.fixture.json`, 500 fictional payments with customers at `example.com`. `scripts/generate-payments.ts` produces it deterministically; the same date always yields the same file:
 
-The local-only Stripe SDK importer is available as `pnpm stripe:import`. It uses the existing `STRIPE_SECRET_KEY` from the environment or `.env.local`, accepts sandbox test secret/restricted keys only, and refuses live objects. It uses SDK auto-pagination with retries, caps the import at 1,000 records, and atomically replaces `data/stripe-payments.local.json` after validation. The importer is explicit; with the default `local` source, development, builds, tests, and CI never call Stripe. No publishable key or webhook is needed. Integration alignment can be done separately.
+  ```sh
+  pnpm data:generate 2026-11-18T00:00:00Z
+  ```
 
-With the `local` source in development, an existing local snapshot takes precedence over the fixture. Env files and the local JSON are ignored by Git (except `.env.example`). Production uses the committed synthetic fixture unless `PAYMENTS_SOURCE=remote` is set. Importing fewer than 300 payments does not duplicate or invent Stripe records.
+- `remote`: the Stripe sandbox behind `STRIPE_SECRET_KEY`, read at request time. Nothing is written to disk, and with the default `local` source, development, builds, tests and CI never call Stripe.
+
+Env files are ignored by Git, except `.env.example`.
 
 The four UI status categories deliberately simplify Stripe's source statuses. Refunds take precedence; canceled payments and failed payment-method attempts display Failed; other open PaymentIntents display Pending. The original source status remains visible on the detail page. Activity shows only known timestamps, and custom Stripe metadata is not exported.
 
@@ -56,15 +58,17 @@ pnpm format:check
 pnpm typecheck
 pnpm test:unit
 pnpm test:coverage
+pnpm knip            # unused files, exports and dependencies
+pnpm audit --audit-level high
 pnpm build
 ```
 
-`pnpm install` installs a [lefthook](https://lefthook.dev) pre-commit hook (`lefthook.yml`) that runs `oxlint --fix` and then `oxfmt` on staged files and restages the fixes; unstaged edits are left untouched. Skip it for a single command with `LEFTHOOK=0` only when necessary. `pnpm test:coverage` writes text, HTML (`coverage/index.html`) and LCOV reports and fails below the thresholds in `vitest.config.mts`.
+`pnpm install` installs a [lefthook](https://lefthook.dev) pre-commit hook (`lefthook.yml`) that scans the staged diff for secrets with [gitleaks](https://github.com/gitleaks/gitleaks) (install it with `brew install gitleaks`), then runs `oxlint --fix` and `oxfmt` on staged files and restages the fixes; unstaged edits are left untouched. Skip it for a single command with `LEFTHOOK=0` only when necessary. `pnpm test:coverage` writes text, HTML (`coverage/index.html`) and LCOV reports and fails below the thresholds in `vitest.config.mts`.
 
-GitHub Actions runs separate lint/format, typecheck, and unit-test (with coverage thresholds) jobs with frozen pnpm installs. Tests cover query combinations, timezone boundaries, currency precision, status normalization, safe import persistence, sorting, pagination, and clipboard behavior. Use `pnpm test:watch` during development.
+GitHub Actions runs lint/format, typecheck, unit tests with coverage thresholds, unused-code (knip), dependency audit, dependency review (pull requests) and gitleaks secret-scan jobs, on pull requests and on pushes to `main`. Actions are pinned to commit SHAs and kept current by Dependabot. Tests cover query combinations, timezone boundaries, currency precision, status normalization, Stripe fetching, sorting, pagination, and clipboard behavior. Use `pnpm test:watch` during development.
 
 ## Deployment
 
 [Production](https://chargeblast-challenge-starter.vercel.app/payments) · [GitHub](https://github.com/gabrielreisn/chargeblast-challenge)
 
-Vercel detects Next.js and pnpm from the repository. Canonical URLs, Open Graph tags, `sitemap.xml` and `robots.txt` use `NEXT_PUBLIC_SITE_URL` when set, otherwise Vercel's production domain; all metadata is defined in `src/lib/seo.ts`. No Stripe runtime key is needed. The dashboard is a read-only demo; create-payment and unrelated navigation are reference elements rather than money-moving operations. See `plan.md` for the original requirement mapping and delivery checklist.
+Vercel detects Next.js and pnpm from the repository. Canonical URLs, Open Graph tags, `sitemap.xml` and `robots.txt` use `NEXT_PUBLIC_SITE_URL` when set, otherwise Vercel's production domain; all metadata is defined in `src/lib/seo.ts`. No Stripe runtime key is needed. The dashboard is a read-only demo; create-payment and unrelated navigation are reference elements rather than money-moving operations. The original brief is in [`docs/project-brief.pdf`](docs/project-brief.pdf); `plan.md` holds the initial requirement mapping and delivery checklist.

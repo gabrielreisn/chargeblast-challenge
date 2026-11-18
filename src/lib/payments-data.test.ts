@@ -43,9 +43,7 @@ test("fetches from Stripe with the configured key when the source is remote", as
   vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_123");
   await expect(load()).resolves.toBe(stripeSnapshot);
   expect(stripe.createStripeClient).toHaveBeenCalledWith("sk_test_123");
-  expect(stripe.fetchStripeSnapshot).toHaveBeenCalledWith(expect.anything(), {
-    source: "stripe-api",
-  });
+  expect(stripe.fetchStripeSnapshot).toHaveBeenCalledOnce();
 });
 
 test("surfaces Stripe and configuration failures to the route error boundary", async () => {

@@ -30,13 +30,12 @@ export const paymentSchema = z.object({
   description: z.string().nullable(),
 });
 /**
- * synthetic: committed demo fixture · stripe-sandbox: snapshot saved by `pnpm stripe:import`
- * · stripe-api: fetched from the Stripe API at request time (`PAYMENTS_SOURCE=remote`).
+ * synthetic: the committed demo fixture (`PAYMENTS_SOURCE=local`).
+ * stripe-api: fetched from the Stripe API at request time (`PAYMENTS_SOURCE=remote`).
  */
-export const snapshotSources = ["synthetic", "stripe-sandbox", "stripe-api"] as const;
+const snapshotSources = ["synthetic", "stripe-api"] as const;
 export const snapshotSourceLabels = {
   synthetic: "Synthetic demo fixture",
-  "stripe-sandbox": "Stripe sandbox snapshot",
   "stripe-api": "Live from Stripe sandbox",
 };
 export const snapshotSchema = z.object({
