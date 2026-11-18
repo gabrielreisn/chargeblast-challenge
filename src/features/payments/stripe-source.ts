@@ -25,7 +25,7 @@ async function listPaymentIntents(
   for await (const intent of stripe.paymentIntents.list({
     limit: 100,
     created: { lte: createdBefore },
-    expand: ["data.customer", "data.latest_charge", "data.payment_method"],
+    expand: ["data.customer", "data.latest_charge.balance_transaction", "data.payment_method"],
   })) {
     payments.push(normalizePayment(intent));
     if (payments.length >= limit) break;
@@ -42,7 +42,7 @@ async function listStandaloneCharges(
   for await (const charge of stripe.charges.list({
     limit: 100,
     created: { lte: createdBefore },
-    expand: ["data.customer"],
+    expand: ["data.customer", "data.balance_transaction"],
   })) {
     if (charge.payment_intent) continue;
     payments.push(normalizeCharge(charge));
@@ -70,7 +70,7 @@ export async function fetchStripeSnapshot(
     .toSorted((a, b) => b.created - a.created)
     .slice(0, limit);
   return snapshotSchema.parse({
-    schemaVersion: 1,
+    schemaVersion: 2,
     source: "stripe-api",
     importedAt: new Date().toISOString(),
     payments,

@@ -1,5 +1,12 @@
 import type Stripe from "stripe";
-import { paymentSchema, type Payment, type PaymentStatus } from "./model";
+import {
+  paymentSchema,
+  riskLevels,
+  type Payment,
+  type PaymentEvent,
+  type PaymentStatus,
+  type RiskLevel,
+} from "./model";
 
 // Translates Stripe API objects (PaymentIntents and legacy Charges) into the
 // app's `Payment` schema, the same shape the committed fixture already uses.
@@ -76,6 +83,10 @@ function commonFields({ charge, customer, paymentMethod, receiptEmail }: Payment
       receiptEmail ??
       null,
   });
+  const balance =
+    typeof charge?.balance_transaction === "object" ? charge.balance_transaction : null;
+  const chargeCard = details?.card;
+  const checks = chargeCard?.checks;
   return {
     customer: {
       id: typeof customer === "string" ? customer : (customer?.id ?? null),
@@ -87,7 +98,63 @@ function commonFields({ charge, customer, paymentMethod, receiptEmail }: Payment
     last4: card?.last4 ?? bank?.last4 ?? null,
     wallet,
     amountRefunded: charge?.amount_refunded ?? 0,
+    card: card
+      ? {
+          funding: card.funding ?? null,
+          expMonth: card.exp_month ?? null,
+          expYear: card.exp_year ?? null,
+          fingerprint: card.fingerprint ?? null,
+          country: card.country ?? null,
+          cvcCheck: cardCheck(checks?.cvc_check ?? card.checks?.cvc_check),
+          issuer: chargeCard?.issuer ?? null,
+        }
+      : null,
+    bankName: bank?.bank_name ?? null,
+    // Fee and payout date live on the balance transaction, expanded when listing.
+    fee: balance?.fee ?? null,
+    availableOn: balance?.available_on ?? null,
+    statementDescriptor: charge?.calculated_statement_descriptor ?? null,
+    riskLevel: riskLevelFor(charge?.outcome?.risk_level),
+    riskScore: charge?.outcome?.risk_score ?? null,
+    refundedAt: charge?.refunds?.data?.[0]?.created ?? null,
   };
+}
+
+const knownChecks = new Set(["pass", "fail", "unavailable", "unchecked"]);
+
+function cardCheck(value: string | null | undefined) {
+  return value && knownChecks.has(value)
+    ? (value as "pass" | "fail" | "unavailable" | "unchecked")
+    : null;
+}
+
+/** Radar's levels outside the three the dashboard shows (not_assessed, unknown) read as none. */
+function riskLevelFor(value: string | null | undefined): RiskLevel | null {
+  return riskLevels.find((level) => level === value) ?? null;
+}
+
+/** Status events Stripe dates on the objects; anything it doesn't date is left out. */
+function timelineFor(
+  created: number,
+  status: PaymentStatus,
+  charge: Stripe.Charge | null,
+  canceledAt: number | null,
+  refundedAt: number | null,
+) {
+  const events: PaymentEvent[] = [{ type: "created", created }];
+  const chargedAt = charge?.created ?? null;
+  const add = (type: PaymentEvent["type"], at: number | null) => {
+    if (at !== null) events.push({ type, created: at });
+  };
+  if (status === "succeeded" || status === "refunded" || status === "disputed")
+    add("succeeded", chargedAt);
+  if (status === "failed") add("failed", chargedAt);
+  if (status === "blocked") add("blocked", chargedAt);
+  if (status === "uncaptured") add("authorized", chargedAt);
+  if (status === "pending") add("processing", chargedAt);
+  if (status === "canceled") add("canceled", canceledAt);
+  if (status === "refunded") add("refunded", refundedAt);
+  return events.toSorted((a, b) => a.created - b.created);
 }
 
 /** Radar blocks a payment by failing its charge with a "blocked" outcome. */
@@ -156,15 +223,29 @@ export function normalizePayment(intent: Stripe.PaymentIntent) {
     paymentMethod,
     receiptEmail: intent.receipt_email,
   });
+  const status = paymentIntentStatus(intent, charge, fields.amountRefunded);
   return paymentSchema.parse({
     ...fields,
     id: intent.id,
     amount: intent.amount,
     currency: intent.currency,
-    status: paymentIntentStatus(intent, charge, fields.amountRefunded),
+    status,
     sourceStatus: intent.status,
     created: intent.created,
     description: intent.description,
+    statementDescriptor: fields.statementDescriptor ?? intent.statement_descriptor ?? null,
+    failureMessage:
+      (charge?.outcome?.type === "blocked"
+        ? charge.outcome.seller_message
+        : (charge?.failure_message ?? intent.last_payment_error?.message)) ?? null,
+    metadata: { ...intent.metadata },
+    events: timelineFor(
+      intent.created,
+      status,
+      charge,
+      intent.canceled_at ?? null,
+      fields.refundedAt,
+    ),
   });
 }
 
@@ -182,14 +263,22 @@ export function normalizeCharge(charge: Stripe.Charge) {
     paymentMethod: null,
     receiptEmail: charge.receipt_email,
   });
+  const status = chargeStatus(charge, fields.amountRefunded);
   return paymentSchema.parse({
     ...fields,
     id: charge.id,
     amount: charge.amount,
     currency: charge.currency,
-    status: chargeStatus(charge, fields.amountRefunded),
+    status,
     sourceStatus: chargeSourceStatus(charge),
     created: charge.created,
     description: charge.description,
+    failureMessage:
+      (charge.outcome?.type === "blocked"
+        ? charge.outcome.seller_message
+        : charge.failure_message) ?? null,
+    metadata: { ...charge.metadata },
+    // A legacy charge is created and settled in one step, so its own timestamp dates both.
+    events: timelineFor(charge.created, status, charge, null, fields.refundedAt),
   });
 }

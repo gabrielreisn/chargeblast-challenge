@@ -5,7 +5,7 @@ import type { Snapshot } from "@/features/payments/model";
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: vi.fn<() => void>() }));
 const stripeSnapshot: Snapshot = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   source: "stripe-api",
   importedAt: "2026-11-18T00:00:00.000Z",
   payments: [],

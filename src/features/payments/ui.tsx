@@ -15,7 +15,7 @@ import {
 import { toast } from "sonner";
 import { Hint } from "@/components/ui/hint";
 import { cn } from "@/components/ui/styles";
-import { statusLabels, type Payment, type PaymentStatus } from "./model";
+import { statusLabels, walletLabels, type Payment, type PaymentStatus } from "./model";
 
 const neutralBadge = "border-line bg-field text-subtle";
 
@@ -108,8 +108,6 @@ function MethodIcon({ payment }: PaymentProps) {
     );
   return <CardBrand brand={payment.brand} />;
 }
-
-const walletLabels: Record<string, string> = { apple_pay: "Apple Pay", google_pay: "Google Pay" };
 
 function methodDisplayLabel(payment: Payment) {
   if (payment.method === "ach") return "ACH";

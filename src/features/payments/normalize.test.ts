@@ -171,3 +171,90 @@ describe("customer contact cleanup", () => {
     expect(normalizeCharge(charge()).customer).toMatchObject({ name: "Legacy Buyer" });
   });
 });
+
+describe("payment details", () => {
+  test("reads card checks, fees, risk, descriptor, metadata and a dated timeline", () => {
+    const latest = {
+      ...charge({ created: 1700000005, calculated_statement_descriptor: "CRAMLY.AI" }),
+      balance_transaction: { fee: 89, available_on: 1700524800 },
+      outcome: { type: "authorized", risk_level: "normal", risk_score: 12 },
+      payment_method_details: {
+        type: "card",
+        card: {
+          brand: "visa",
+          last4: "4242",
+          funding: "credit",
+          exp_month: 12,
+          exp_year: 2032,
+          fingerprint: "FH40CWe8laEq7lbY",
+          country: "US",
+          checks: { cvc_check: "pass" },
+          issuer: "Stripe Payments UK Limited",
+        },
+      },
+    };
+    const normalized = normalizePayment(
+      pi({ latest_charge: latest, metadata: { order_id: "o_1" } }),
+    );
+    expect(normalized).toMatchObject({
+      card: {
+        funding: "credit",
+        expMonth: 12,
+        expYear: 2032,
+        fingerprint: "FH40CWe8laEq7lbY",
+        country: "US",
+        cvcCheck: "pass",
+        issuer: "Stripe Payments UK Limited",
+      },
+      fee: 89,
+      availableOn: 1700524800,
+      statementDescriptor: "CRAMLY.AI",
+      riskLevel: "normal",
+      riskScore: 12,
+      metadata: { order_id: "o_1" },
+      failureMessage: null,
+      events: [
+        { type: "created", created: 1700000000 },
+        { type: "succeeded", created: 1700000005 },
+      ],
+    });
+  });
+
+  test("keeps decline reasons, Radar messages and cancellation times, and drops unknown values", () => {
+    const declined = normalizePayment(
+      pi({
+        status: "requires_payment_method",
+        last_payment_error: { code: "card_declined", message: "Your card was declined." },
+      }),
+    );
+    expect(declined.failureMessage).toBe("Your card was declined.");
+    const blocked = normalizeCharge(
+      charge({
+        status: "failed",
+        outcome: { type: "blocked", seller_message: "Blocked by Radar", risk_level: "highest" },
+      }),
+    );
+    expect(blocked).toMatchObject({ failureMessage: "Blocked by Radar", riskLevel: "highest" });
+    const canceled = normalizePayment(pi({ status: "canceled", canceled_at: 1700003600 }));
+    expect(canceled.events.at(-1)).toEqual({ type: "canceled", created: 1700003600 });
+    const unassessed = normalizeCharge(
+      charge({
+        outcome: { type: "authorized", risk_level: "not_assessed" },
+        payment_method_details: { type: "card", card: { checks: { cvc_check: "bogus" } } },
+      }),
+    );
+    expect(unassessed).toMatchObject({ riskLevel: null, card: { cvcCheck: null } });
+  });
+
+  test("reads the bank name for ACH debits", () => {
+    const ach = normalizeCharge(
+      charge({
+        payment_method_details: {
+          type: "us_bank_account",
+          us_bank_account: { last4: "6789", bank_name: "STRIPE TEST BANK" },
+        },
+      }),
+    );
+    expect(ach).toMatchObject({ method: "ach", bankName: "STRIPE TEST BANK", card: null });
+  });
+});
